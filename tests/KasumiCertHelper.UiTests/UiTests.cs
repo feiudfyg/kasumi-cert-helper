@@ -141,7 +141,7 @@ public class ShellTests
     [Theory]
     [InlineData("证书存储")]
     [InlineData("X.509 证书管理")]
-    [InlineData("GPG / GnuPG")]
+    [InlineData("OpenPGP")]
     public void NavigationItemExists(string name)
     {
         AutomationElement? item = _app.FindByName(name, 40);
@@ -273,7 +273,7 @@ public class GpgPageTests
     [Fact]
     public void GeneratingAKeyPairListsItAndShowsParsedDetails()
     {
-        _app.SelectPage("GPG / GnuPG", "KeyList");
+        _app.SelectPage("OpenPGP", "KeyList");
 
         string name = "Kasumi UI Test " + Guid.NewGuid().ToString("N")[..6];
 
@@ -307,7 +307,7 @@ public class GpgPageTests
     [Fact]
     public void ToolbarButtonsAreReachable()
     {
-        _app.SelectPage("GPG / GnuPG", "KeyList");
+        _app.SelectPage("OpenPGP", "KeyList");
 
         UiHelpers.AssertReachable(_app,
             "RefreshButton", "GenerateButton", "ImportButton", "DeleteButton",
@@ -318,7 +318,7 @@ public class GpgPageTests
     [Fact]
     public void TableColumnsFitInsideTheList()
     {
-        _app.SelectPage("GPG / GnuPG", "KeyList");
+        _app.SelectPage("OpenPGP", "KeyList");
 
         UiHelpers.WaitForListItems(_app, "KeyList", TimeSpan.FromSeconds(90));
         UiHelpers.AssertHeadersFitList(_app, "KeyList",
@@ -482,7 +482,7 @@ public class SettingsPageTests
                 _app.WaitUntil(() => _app.FindByName("New database", 5) is not null, 20),
                 "英文界面的 X.509 工具栏没有本地化。\n" + _app.DumpTree(7));
 
-            _app.SelectPage("GPG / GnuPG", "KeyList");
+            _app.SelectPage("OpenPGP", "KeyList");
             Assert.True(
                 _app.WaitUntil(() => _app.FindByName("Generate key pair", 5) is not null, 20),
                 "英文界面的 GPG 工具栏没有本地化。\n" + _app.DumpTree(7));
