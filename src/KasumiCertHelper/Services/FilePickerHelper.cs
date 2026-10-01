@@ -1,10 +1,12 @@
 using Windows.Storage.Pickers;
 
+using KasumiCertHelper.Core.Localization;
+
 namespace KasumiCertHelper.Services;
 
 public static class FilePickerHelper
 {
-    public const string CertificateFilterName = "证书文件";
+    public static string CertificateFilterName => Loc.Get("Filter_CertificateFiles");
     public static readonly string[] CertificateExtensions = { ".cer", ".crt", ".der", ".pem", ".pfx", ".p12", ".p7b", ".sst" };
 
     public static async Task<string?> PickOpenFileAsync(string commitButtonText, params string[] extensions)

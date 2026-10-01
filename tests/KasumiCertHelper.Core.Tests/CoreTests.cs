@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using KasumiCertHelper.Core.Localization;
 using KasumiCertHelper.Core.Models;
 using KasumiCertHelper.Core.Services;
 
@@ -7,6 +8,9 @@ namespace KasumiCertHelper.Core.Tests;
 
 public class X509GenerationTests
 {
+    /// <summary>The assertions below are written against the Chinese table.</summary>
+    public X509GenerationTests() => Loc.SetCulture("zh-CN");
+
     [Fact]
     public void RsaSelfSignedCertificate_HasExpectedProperties()
     {
@@ -97,6 +101,8 @@ public class X509GenerationTests
     public void SigningClampsValidityToIssuerExpiry()
     {
         using AsymmetricAlgorithm caKey = X509Factory.CreateKey(new X509KeyOptions { Algorithm = X509KeyAlgorithm.Rsa, KeySize = 2048 });
+        using AsymmetricAlgorithm leafKey = X509Factory.CreateKey(new X509KeyOptions { Algorithm = X509KeyAlgorithm.Rsa, KeySize = 2048 });
+
         X509Certificate2 ca = X509Factory.CreateSelfSigned(caKey, new X509CertificateOptions
         {
             Subject = "CN=Short Lived CA",
@@ -104,7 +110,6 @@ public class X509GenerationTests
             ValidDays = 30,
         });
 
-        using AsymmetricAlgorithm leafKey = X509Factory.CreateKey(new X509KeyOptions { Algorithm = X509KeyAlgorithm.Rsa, KeySize = 2048 });
         CertificateRequest csr = X509Factory.CreateRequest(leafKey, new X509CertificateOptions { Subject = "CN=leaf.example.com" });
         CertificateRequest reloaded = X509Factory.LoadCsr(X509Factory.ExportCsrPem(csr), "SHA256");
 
@@ -160,6 +165,9 @@ public class X509GenerationTests
 
 public class CertificateStoreTests
 {
+    /// <summary>The assertions below are written against the Chinese table.</summary>
+    public CertificateStoreTests() => Loc.SetCulture("zh-CN");
+
     [Fact]
     public void CanEnumerateCurrentUserStores()
     {
@@ -231,6 +239,9 @@ public class CertificateStoreTests
 
 public class GpgServiceTests
 {
+    /// <summary>The assertions below are written against the Chinese table.</summary>
+    public GpgServiceTests() => Loc.SetCulture("zh-CN");
+
     [Fact]
     public void GpgIsDetected()
     {

@@ -1,3 +1,4 @@
+using KasumiCertHelper.Core.Localization;
 using KasumiCertHelper.Core.Models;
 using KasumiCertHelper.Core.Services;
 
@@ -5,6 +6,9 @@ namespace KasumiCertHelper.Core.Tests;
 
 public class GpgOutputInterpreterTests
 {
+    /// <summary>The assertions below are written against the Chinese table.</summary>
+    public GpgOutputInterpreterTests() => Loc.SetCulture("zh-CN");
+
     private const string Fingerprint = "0123456789ABCDEF0123456789ABCDEF01234567";
     private const string KeyId = "1234567890ABCDEF";
     private const string ShortId = "89ABCDEF01234567";
@@ -201,6 +205,9 @@ public class GpgOutputInterpreterTests
 
 public class CertificateSummaryBuilderTests
 {
+    /// <summary>The assertions below are written against the Chinese table.</summary>
+    public CertificateSummaryBuilderTests() => Loc.SetCulture("zh-CN");
+
     [Fact]
     public void Build_ParsesEverythingTheDetailPaneShows()
     {
@@ -259,6 +266,7 @@ public class CertificateSummaryBuilderTests
         };
 
         using System.Security.Cryptography.X509Certificates.X509Certificate2 certificate = X509Factory.CreateSelfSigned(key, options);
+
         CertificateSummary summary = CertificateSummaryBuilder.Build(certificate);
 
         Assert.Equal("已过期", summary.StatusText);

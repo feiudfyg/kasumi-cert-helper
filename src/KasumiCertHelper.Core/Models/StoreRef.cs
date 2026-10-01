@@ -1,4 +1,5 @@
 using System.Security.Cryptography.X509Certificates;
+using KasumiCertHelper.Core.Localization;
 
 namespace KasumiCertHelper.Core.Models;
 
@@ -6,7 +7,9 @@ public sealed record StoreRef(StoreLocation Location, string Name)
 {
     public string FriendlyName => Services.CertificateStoreService.GetFriendlyStoreName(Name);
 
-    public string LocationText => Location == StoreLocation.CurrentUser ? "当前用户" : "本地计算机";
+    public string LocationText => Loc.Get(Location == StoreLocation.CurrentUser
+        ? "Store_Location_CurrentUser"
+        : "Store_Location_LocalMachine");
 
     public string DisplayName => $"{FriendlyName} ({Name})";
 

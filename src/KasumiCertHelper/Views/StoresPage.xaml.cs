@@ -7,6 +7,7 @@ using KasumiCertHelper.Core.Models;
 using KasumiCertHelper.Core.Services;
 using KasumiCertHelper.Services;
 using KasumiCertHelper.ViewModels;
+using KasumiCertHelper.Core.Localization;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -17,6 +18,9 @@ namespace KasumiCertHelper.Views;
 
 public sealed partial class StoresPage : Page
 {
+    /// <summary>Resolves a resource key for XAML, see <c>{x:Bind T('Key')}</c>.</summary>
+    public string T(string key) => Loc.Get(key);
+
     private const string ColumnsKey = "Stores.Columns";
     private const string StorePaneKey = "Stores.StorePaneWidth";
     private const string DetailsPaneKey = "Stores.DetailsPaneHeight";
@@ -141,8 +145,8 @@ public sealed partial class StoresPage : Page
         DetailsSplitter.Visibility = _detailsVisible ? Visibility.Visible : Visibility.Collapsed;
 
         DetailsToggleIcon.Glyph = _detailsVisible ? "\uE70D" : "\uE70E";
-        DetailsToggleText.Text = _detailsVisible ? "收起详情" : "显示详情";
-        ToolTipService.SetToolTip(DetailsToggleButton, _detailsVisible ? "收起详细信息面板" : "显示详细信息面板");
+        DetailsToggleText.Text = Loc.Get(_detailsVisible ? "Stores_HideDetails" : "Stores_ShowDetails");
+        ToolTipService.SetToolTip(DetailsToggleButton, Loc.Get(_detailsVisible ? "Stores_CollapseDetailsPane" : "Stores_ExpandDetailsPane"));
     }
 
     // ---------------------------------------------------------------- stores
@@ -166,7 +170,7 @@ public sealed partial class StoresPage : Page
         }
         catch (Exception ex)
         {
-            ShowError("读取证书存储区失败", ex);
+            ShowError(Loc.Get("Stores_ErrorReadStores"), ex);
         }
         finally
         {
@@ -192,7 +196,7 @@ public sealed partial class StoresPage : Page
 
         if (StoreCountText is not null)
         {
-            StoreCountText.Text = $"{_userStores.Count + _machineStores.Count} 个";
+            StoreCountText.Text = Loc.Format("Stores_StoreCount", _userStores.Count + _machineStores.Count);
         }
 
         UserStoreExpander.Visibility = _userStores.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -272,7 +276,7 @@ public sealed partial class StoresPage : Page
 
     private void UpdateStoreTitle()
     {
-        string locationText = _location == StoreLocation.CurrentUser ? "当前用户" : "本地计算机";
+        string locationText = Loc.Get(_location == StoreLocation.CurrentUser ? "Store_Location_CurrentUser" : "Store_Location_LocalMachine");
         StoreTitleText.Text = $"{locationText} \\ {CertificateStoreService.GetFriendlyStoreName(_storeName)}";
         ToolTipService.SetToolTip(StoreTitleText, $"{locationText}\\{_storeName}");
     }
@@ -287,7 +291,7 @@ public sealed partial class StoresPage : Page
 
         if (error is not null)
         {
-            ShowErrorMessage("读取存储区内容失败：" + error);
+            ShowErrorMessage(Loc.Format("Stores_ErrorReadStoreContents", error));
         }
         else
         {
@@ -317,13 +321,13 @@ public sealed partial class StoresPage : Page
         }
 
         CertificateCountText.Text = _allCertificates.Count == _visibleCertificates.Count
-            ? $"共 {_visibleCertificates.Count} 个证书"
-            : $"{_visibleCertificates.Count} / {_allCertificates.Count} 个证书";
+            ? Loc.Format("Stores_CertCountAll", _visibleCertificates.Count)
+            : Loc.Format("Stores_CertCountFiltered", _visibleCertificates.Count, _allCertificates.Count);
 
         CertEmptyState.Visibility = _visibleCertificates.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         CertEmptyText.Text = _allCertificates.Count == 0
-            ? "此存储区中没有证书。"
-            : "没有符合筛选条件的证书。";
+            ? Loc.Get("Stores_EmptyCertificatesText")
+            : Loc.Get("Stores_NoMatchingCertificates");
 
         static bool Contains(string? value, string query)
             => value is not null && value.Contains(query, StringComparison.OrdinalIgnoreCase);
@@ -342,7 +346,7 @@ public sealed partial class StoresPage : Page
         {
             _currentSummary = null;
             DetailsPanel.Children.Clear();
-            DetailsHeader.Text = "证书详细信息";
+            DetailsHeader.Text = Loc.Get("Stores_DetailsTitle");
             DetailsStatusText.Text = string.Empty;
             DetailsEmptyState.Visibility = Visibility.Visible;
             return;
@@ -364,7 +368,7 @@ public sealed partial class StoresPage : Page
             _currentSummary = null;
             DetailsPanel.Children.Clear();
             DetailsHeader.Text = item.DisplayName;
-            DetailsStatusText.Text = "无法解析该证书。";
+            DetailsStatusText.Text = Loc.Get("Stores_ErrorParseCertificate");
             DetailsEmptyState.Visibility = Visibility.Collapsed;
             DetailsPanel.Children.Add(new TextBlock
             {
@@ -386,12 +390,12 @@ public sealed partial class StoresPage : Page
         CertList.SelectedItem = row;
 
         var flyout = new MenuFlyout();
-        flyout.Items.Add(BuildContextMenuItem("复制指纹", "\uE8C8", () => CopyToClipboard(row.Item.Thumbprint)));
-        flyout.Items.Add(BuildContextMenuItem("复制详细信息", "\uE8C8", CopyDetails));
+        flyout.Items.Add(BuildContextMenuItem(Loc.Get("Stores_CopyFingerprint"), "\uE8C8", () => CopyToClipboard(row.Item.Thumbprint)));
+        flyout.Items.Add(BuildContextMenuItem(Loc.Get("Stores_CopyDetails"), "\uE8C8", CopyDetails));
         flyout.Items.Add(new MenuFlyoutSeparator());
-        flyout.Items.Add(BuildContextMenuItem("导出证书...", "\uE898", () => _ = ExportAsync(row.Item)));
-        flyout.Items.Add(BuildContextMenuItem("在 certmgr.msc 中打开", "\uE8A5", OpenCertMgr));
-        flyout.Items.Add(BuildContextMenuItem("删除证书", "\uE74D", () => _ = DeleteAsync(row.Item)));
+        flyout.Items.Add(BuildContextMenuItem(Loc.Get("Stores_ExportCertificate"), "\uE898", () => _ = ExportAsync(row.Item)));
+        flyout.Items.Add(BuildContextMenuItem(Loc.Get("Stores_OpenInCertMgr"), "\uE8A5", OpenCertMgr));
+        flyout.Items.Add(BuildContextMenuItem(Loc.Get("Stores_DeleteCertificate"), "\uE74D", () => _ = DeleteAsync(row.Item)));
 
         flyout.ShowAt(element, new FlyoutShowOptions { Position = e.GetPosition(element) });
         e.Handled = true;
@@ -426,7 +430,7 @@ public sealed partial class StoresPage : Page
     {
         try
         {
-            string? path = await FilePickerHelper.PickOpenFileAsync("导入", CertificateFileIOExtensions.All);
+            string? path = await FilePickerHelper.PickOpenFileAsync(Loc.Get("Common_Import"), CertificateFileIOExtensions.All);
             if (path is null)
             {
                 return;
@@ -440,18 +444,18 @@ public sealed partial class StoresPage : Page
             }
             catch (CryptographicException)
             {
-                password = await DialogService.ShowPasswordAsync("证书密码", "该文件已加密，请输入密码：");
+                password = await DialogService.ShowPasswordAsync(Loc.Get("Stores_CertificatePassword"), Loc.Get("Stores_EnterPassword"));
                 if (password is null)
                 {
                     return;
                 }
             }
 
-            string locationText = _location == StoreLocation.CurrentUser ? "当前用户" : "本地计算机";
+            string locationText = Loc.Get(_location == StoreLocation.CurrentUser ? "Store_Location_CurrentUser" : "Store_Location_LocalMachine");
             bool confirmed = await DialogService.ShowConfirmAsync(
-                "导入证书",
-                $"确定要将 {Path.GetFileName(path)} 导入到 \"{locationText}\\{CertificateStoreService.GetFriendlyStoreName(_storeName)}\" 吗？",
-                "导入");
+                Loc.Get("Stores_ImportTitle"),
+                Loc.Format("Stores_ConfirmImport", Path.GetFileName(path), $"{locationText}\\{CertificateStoreService.GetFriendlyStoreName(_storeName)}"),
+                Loc.Get("Common_Import"));
             if (!confirmed)
             {
                 return;
@@ -459,11 +463,11 @@ public sealed partial class StoresPage : Page
 
             _stores.ImportCertificateToStore(data, password, _location, _storeName);
             await ReloadAsync(_storeName);
-            await DialogService.ShowMessageAsync("导入成功", "证书已成功导入到存储区。");
+            await DialogService.ShowMessageAsync(Loc.Get("Stores_ImportSuccessTitle"), Loc.Get("Stores_ImportSuccessMessage"));
         }
         catch (Exception ex)
         {
-            await DialogService.ShowErrorAsync("导入失败", ex);
+            await DialogService.ShowErrorAsync(Loc.Get("Stores_ImportFailed"), ex);
         }
     }
 
@@ -474,7 +478,7 @@ public sealed partial class StoresPage : Page
     {
         if (item is null)
         {
-            await DialogService.ShowMessageAsync("导出证书", "请先在列表中选择一个证书。");
+            await DialogService.ShowMessageAsync(Loc.Get("Stores_ExportTitle"), Loc.Get("Stores_SelectCertificateFirst"));
             return;
         }
 
@@ -482,22 +486,22 @@ public sealed partial class StoresPage : Page
         {
             var formatBox = new ComboBox
             {
-                Header = "导出格式",
+                Header = Loc.Get("X509_ExportFormat"),
                 ItemsSource = new[]
                 {
-                    "DER 编码证书 (*.cer)",
-                    "Base64 (PEM) 证书 (*.crt)",
-                    "PKCS#12 证书包 (*.pfx / *.p12)",
+                    Loc.Get("Stores_ExportDerCert"),
+                    Loc.Get("Stores_ExportPemCert"),
+                    Loc.Get("Stores_ExportPfx"),
                 },
                 SelectedIndex = 0,
                 HorizontalAlignment = HorizontalAlignment.Stretch,
             };
             var includeKey = new CheckBox
             {
-                Content = "包含私钥（仅 PKCS#12 且证书含私钥时有效）",
+                Content = Loc.Get("X509_ExportIncludePrivateKey"),
                 IsEnabled = false,
             };
-            var passwordBox = new PasswordBox { Header = "PKCS#12 密码", IsEnabled = false };
+            var passwordBox = new PasswordBox { Header = Loc.Get("Stores_PfxPassword"), IsEnabled = false };
 
             formatBox.SelectionChanged += (_, _) =>
             {
@@ -523,10 +527,10 @@ public sealed partial class StoresPage : Page
 
             var dialog = new ContentDialog
             {
-                Title = "导出选项",
+                Title = Loc.Get("X509_ExportOptionsTitle"),
                 Content = panel,
-                PrimaryButtonText = "导出",
-                CloseButtonText = "取消",
+                PrimaryButtonText = Loc.Get("Common_Export"),
+                CloseButtonText = Loc.Get("Common_Cancel"),
                 DefaultButton = ContentDialogButton.Primary,
             };
 
@@ -541,12 +545,12 @@ public sealed partial class StoresPage : Page
 
             (string name, string[] extensions)[] types = format switch
             {
-                0 => new[] { ("DER 证书", new[] { ".cer" }) },
-                1 => new[] { ("PEM 证书", new[] { ".crt", ".pem" }) },
+                0 => new[] { (Loc.Get("Stores_SaveDerCert"), new[] { ".cer" }) },
+                1 => new[] { (Loc.Get("Stores_SavePemCert"), new[] { ".crt", ".pem" }) },
                 _ => new[] { ("PKCS#12", new[] { ".pfx", ".p12" }) },
             };
 
-            string? savePath = await FilePickerHelper.PickSaveFileAsync(SanitizeFileName(item.DisplayName), "导出", types);
+            string? savePath = await FilePickerHelper.PickSaveFileAsync(SanitizeFileName(item.DisplayName), Loc.Get("Common_Export"), types);
             if (savePath is null)
             {
                 return;
@@ -560,11 +564,11 @@ public sealed partial class StoresPage : Page
             };
 
             CertificateFileIO.Export(item.Certificate, savePath, fileFormat, password, withPrivateKey);
-            await DialogService.ShowMessageAsync("导出成功", "已导出到：" + savePath);
+            await DialogService.ShowMessageAsync(Loc.Get("Stores_ExportSuccessTitle"), Loc.Get("Common_ExportedTo") + savePath);
         }
         catch (Exception ex)
         {
-            await DialogService.ShowErrorAsync("导出失败", ex);
+            await DialogService.ShowErrorAsync(Loc.Get("Stores_ExportFailed"), ex);
         }
     }
 
@@ -575,14 +579,14 @@ public sealed partial class StoresPage : Page
     {
         if (item is null)
         {
-            await DialogService.ShowMessageAsync("删除证书", "请先在列表中选择一个证书。");
+            await DialogService.ShowMessageAsync(Loc.Get("Stores_DeleteTitle"), Loc.Get("Stores_SelectCertificateFirst"));
             return;
         }
 
         bool confirmed = await DialogService.ShowConfirmAsync(
-            "删除证书",
-            $"确定要从存储区中删除以下证书吗？此操作不可撤销。\n\n{item.DisplayName}\n{item.Subject}\n指纹: {item.Thumbprint}",
-            "删除");
+            Loc.Get("Stores_DeleteTitle"),
+            Loc.Format("Stores_ConfirmDelete", item.DisplayName, item.Subject, item.Thumbprint),
+            Loc.Get("Common_Delete"));
         if (!confirmed)
         {
             return;
@@ -595,7 +599,7 @@ public sealed partial class StoresPage : Page
         }
         catch (Exception ex)
         {
-            await DialogService.ShowErrorAsync("删除失败", ex);
+            await DialogService.ShowErrorAsync(Loc.Get("Stores_DeleteFailed"), ex);
         }
     }
 
@@ -603,7 +607,7 @@ public sealed partial class StoresPage : Page
     {
         if (CertList.SelectedItem is not CertRow row)
         {
-            _ = DialogService.ShowMessageAsync("复制指纹", "请先在列表中选择一个证书。");
+            _ = DialogService.ShowMessageAsync(Loc.Get("Stores_CopyFingerprint"), Loc.Get("Stores_SelectCertificateFirst"));
             return;
         }
 
@@ -629,7 +633,7 @@ public sealed partial class StoresPage : Page
         }
         catch (Exception ex)
         {
-            _ = DialogService.ShowErrorAsync("无法打开 certmgr.msc", ex);
+            _ = DialogService.ShowErrorAsync(Loc.Get("Error_OpenCertMgrFailed"), ex);
         }
     }
 
@@ -648,20 +652,20 @@ public sealed partial class StoresPage : Page
         }
         catch (Exception ex)
         {
-            await DialogService.ShowErrorAsync("无法以管理员身份重启", ex);
+            await DialogService.ShowErrorAsync(Loc.Get("Error_RestartElevatedFailed"), ex);
         }
     }
 
     private void ShowError(string title, Exception exception)
     {
         AppServices.Log(title + ": " + exception);
-        ShowErrorMessage(title + "：" + DialogService.DescribeException(exception));
+        ShowErrorMessage(title + Loc.Get("Common_DetailsSuffix") + DialogService.DescribeException(exception));
     }
 
     private void ShowErrorMessage(string message)
     {
         StatusBar.Severity = InfoBarSeverity.Error;
-        StatusBar.Title = "错误";
+        StatusBar.Title = Loc.Get("Common_Error");
         StatusBar.Message = message;
         StatusBar.IsOpen = true;
     }

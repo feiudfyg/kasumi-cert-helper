@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using KasumiCertHelper.Core.Localization;
 using KasumiCertHelper.Core.Models;
 
 namespace KasumiCertHelper.Core.Services;
@@ -17,11 +18,13 @@ public static class GpgOutputInterpreter
 {
     private const string StatusPrefix = "[GNUPG:] ";
 
+    // Values are resource keys where the text is translated and plain names where it is not; Get
+    // returns an unknown key unchanged, so both kinds can live in the same table.
     private static readonly Dictionary<int, string> PublicKeyAlgorithms = new()
     {
         [1] = "RSA",
-        [2] = "RSA (encrypt only)",
-        [3] = "RSA (sign only)",
+        [2] = "Gpg_Alg_RsaEncrypt",
+        [3] = "Gpg_Alg_RsaSign",
         [16] = "ElGamal",
         [17] = "DSA",
         [18] = "ECDH",
@@ -130,14 +133,14 @@ public static class GpgOutputInterpreter
                 DescribeSignatureCreation(report, result, status, inputPath, outputPath);
                 break;
             case "export":
-                report.Title = result.Success ? "导出完成" : "导出失败";
-                report.With("输出文件", outputPath);
+                report.Title = Loc.Get(result.Success ? "Gpg_ExportDone" : "Gpg_ExportFailed");
+                report.With(Loc.Get("Gpg_Row_OutputFile"), outputPath);
                 break;
             case "delete":
-                report.Title = result.Success ? "密钥已删除" : "删除失败";
+                report.Title = Loc.Get(result.Success ? "Gpg_DeleteDone" : "Gpg_DeleteFailed");
                 break;
             default:
-                report.Title = result.Success ? "操作完成" : "操作失败";
+                report.Title = Loc.Get(result.Success ? "Gpg_Done" : "Gpg_Failed");
                 break;
         }
 
@@ -183,7 +186,7 @@ public static class GpgOutputInterpreter
     public static string DescribeAlgorithm(string algorithm)
         => int.TryParse(algorithm, NumberStyles.Integer, CultureInfo.InvariantCulture, out int id)
             && PublicKeyAlgorithms.TryGetValue(id, out string? name)
-                ? name
+                ? Loc.Get(name)
                 : algorithm;
 
     public static string DescribeHashAlgorithm(string algorithm)
@@ -218,80 +221,80 @@ public static class GpgOutputInterpreter
 
         if (good is not null)
         {
-            report.Title = "签名有效";
+            report.Title = Loc.Get("Gpg_Verify_Good");
             report.Severity = GpgReportSeverity.Success;
         }
         else if (bad is not null)
         {
-            report.Title = "签名无效（数据可能已被篡改）";
+            report.Title = Loc.Get("Gpg_Verify_Bad");
             report.Severity = GpgReportSeverity.Error;
         }
         else if (expired is not null)
         {
-            report.Title = "签名已过期";
+            report.Title = Loc.Get("Gpg_Verify_Expired");
             report.Severity = GpgReportSeverity.Warning;
         }
         else if (expiredKey is not null)
         {
-            report.Title = "签名者密钥已过期";
+            report.Title = Loc.Get("Gpg_Verify_ExpiredKey");
             report.Severity = GpgReportSeverity.Warning;
         }
         else if (revoked is not null)
         {
-            report.Title = "签名者密钥已被吊销";
+            report.Title = Loc.Get("Gpg_Verify_Revoked");
             report.Severity = GpgReportSeverity.Error;
         }
         else if (noPubKey is not null)
         {
-            report.Title = "缺少公钥，无法验证";
+            report.Title = Loc.Get("Gpg_Verify_NoPublicKey");
             report.Severity = GpgReportSeverity.Warning;
         }
         else if (errsig is not null)
         {
-            report.Title = "无法验证签名";
+            report.Title = Loc.Get("Gpg_Verify_Error");
             report.Severity = GpgReportSeverity.Error;
         }
         else
         {
-            report.Title = result.Success ? "签名有效" : "验证失败";
+            report.Title = Loc.Get(result.Success ? "Gpg_Verify_Good" : "Gpg_Verify_Failed");
         }
 
-        report.With("签名者", signerName);
-        report.With("密钥 ID", keyId);
-        report.With("指纹", FormatFingerprint(validSig?.Arg(0) ?? string.Empty));
+        report.With(Loc.Get("Gpg_Row_Signer"), signerName);
+        report.With(Loc.Get("Gpg_Row_KeyId"), keyId);
+        report.With(Loc.Get("Gpg_Row_Fingerprint"), FormatFingerprint(validSig?.Arg(0) ?? string.Empty));
 
         string signatureDate = validSig?.Arg(1) ?? sigId?.Arg(1) ?? string.Empty;
         if (signatureDate.Length > 0)
         {
-            report.With("签名时间", signatureDate);
+            report.With(Loc.Get("Gpg_Row_SignatureTime"), signatureDate);
         }
 
         if (validSig is not null)
         {
-            report.With("公钥算法", DescribeAlgorithm(validSig.Arg(6)));
-            report.With("摘要算法", DescribeHashAlgorithm(validSig.Arg(7)));
+            report.With(Loc.Get("Gpg_Row_PublicKeyAlgorithm"), DescribeAlgorithm(validSig.Arg(6)));
+            report.With(Loc.Get("Gpg_Row_HashAlgorithm"), DescribeHashAlgorithm(validSig.Arg(7)));
 
             string expiry = validSig.Arg(3);
             if (expiry.Length > 0 && expiry != "0")
             {
-                report.With("签名过期于", FormatUnixTime(expiry));
+                report.With(Loc.Get("Gpg_Row_SignatureExpires"), FormatUnixTime(expiry));
             }
         }
 
         if (noPubKey is not null)
         {
-            report.With("缺少的公钥", ShortKeyId(noPubKey.Arg(0)), GpgReportSeverity.Warning);
+            report.With(Loc.Get("Gpg_Row_MissingPublicKey"), ShortKeyId(noPubKey.Arg(0)), GpgReportSeverity.Warning);
         }
 
         if (errsig is not null)
         {
-            report.With("错误代码", errsig.Arg(5), GpgReportSeverity.Error);
+            report.With(Loc.Get("Gpg_Row_ErrorCode"), errsig.Arg(5), GpgReportSeverity.Error);
         }
 
         GpgStatusLine? trust = status.FirstOrDefault(s => s.Keyword.StartsWith("TRUST_", StringComparison.Ordinal));
         if (trust is not null)
         {
-            report.With("信任状态", DescribeTrust(trust.Keyword));
+            report.With(Loc.Get("Gpg_Row_Trust"), DescribeTrust(trust.Keyword));
         }
 
         if (plaintext is not null)
@@ -299,14 +302,14 @@ public static class GpgOutputInterpreter
             string fileName = plaintext.Arg(2);
             if (fileName.Length > 0 && fileName != "_CONSOLE")
             {
-                report.With("被签名的文件", fileName);
+                report.With(Loc.Get("Gpg_Row_SignedFile"), fileName);
             }
         }
 
         string length = plaintextLength?.Arg(0) ?? string.Empty;
         if (length.Length > 0)
         {
-            report.With("数据长度", length + " 字节");
+            report.With(Loc.Get("Gpg_Row_DataLength"), Loc.Format("Gpg_Value_Bytes", length));
         }
     }
 
@@ -335,29 +338,29 @@ public static class GpgOutputInterpreter
         }
 
         report.Title = result.Success
-            ? imported + secretImported > 0 ? "密钥已导入" : "没有新的密钥"
-            : "导入失败";
+            ? Loc.Get(imported + secretImported > 0 ? "Gpg_Import_Done" : "Gpg_Import_Nothing")
+            : Loc.Get("Gpg_Import_Failed");
 
         if (result.Success && imported == 0 && secretImported == 0 && unchanged > 0)
         {
-            report.Title = "密钥已存在，无需导入";
+            report.Title = Loc.Get("Gpg_Import_Unchanged");
             report.Severity = GpgReportSeverity.Info;
         }
 
         if (summary is not null)
         {
-            report.With("新导入", imported + " 个公钥");
+            report.With(Loc.Get("Gpg_Row_Imported"), Loc.Format("Gpg_Value_PublicKeys", imported));
             if (secretImported > 0)
             {
-                report.With("新导入私钥", secretImported + " 个");
+                report.With(Loc.Get("Gpg_Row_ImportedSecret"), Loc.Format("Gpg_Value_Count", secretImported));
             }
             if (unchanged > 0)
             {
-                report.With("已存在（未变更）", unchanged + " 个");
+                report.With(Loc.Get("Gpg_Row_Unchanged"), Loc.Format("Gpg_Value_Count", unchanged));
             }
             if (notImported > 0)
             {
-                report.With("未能导入", notImported + " 个", GpgReportSeverity.Warning);
+                report.With(Loc.Get("Gpg_Row_NotImported"), Loc.Format("Gpg_Value_Count", notImported), GpgReportSeverity.Warning);
             }
         }
 
@@ -367,11 +370,10 @@ public static class GpgOutputInterpreter
             string reason = line.Arg(0);
             string suffix = reason switch
             {
-                "0" => string.Empty,
-                "1" => "（新密钥）",
-                "2" => "（新用户 ID）",
-                "3" => "（新签名）",
-                "4" => "（新子密钥）",
+                "1" => Loc.Get("Gpg_ImportNew_Key"),
+                "2" => Loc.Get("Gpg_ImportNew_Uid"),
+                "3" => Loc.Get("Gpg_ImportNew_Signature"),
+                "4" => Loc.Get("Gpg_ImportNew_Subkey"),
                 _ => string.Empty,
             };
             report.Note(fingerprint + suffix);
@@ -379,7 +381,7 @@ public static class GpgOutputInterpreter
 
         if (ok.Count > 12)
         {
-            report.Note($"… 以及另外 {ok.Count - 12} 个密钥");
+            report.Note(Loc.Format("Gpg_Import_More", ok.Count - 12));
         }
     }
 
@@ -389,28 +391,28 @@ public static class GpgOutputInterpreter
         IReadOnlyList<GpgStatusLine> status)
     {
         GpgStatusLine? created = Find(status, "KEY_CREATED");
-        report.Title = result.Success ? "密钥对已生成" : "生成密钥失败";
+        report.Title = Loc.Get(result.Success ? "Gpg_Gen_Done" : "Gpg_Gen_Failed");
 
         if (created is not null)
         {
             string fingerprint = FormatFingerprint(created.Arg(1));
-            report.With("新指纹", fingerprint);
+            report.With(Loc.Get("Gpg_Row_NewFingerprint"), fingerprint);
             if (fingerprint.Length >= 16)
             {
-                report.With("密钥 ID", ShortKeyId(created.Arg(1)));
+                report.With(Loc.Get("Gpg_Row_KeyId"), ShortKeyId(created.Arg(1)));
             }
-            report.With("密钥类型", created.Arg(0) switch
+            report.With(Loc.Get("Gpg_Row_KeyType"), created.Arg(0) switch
             {
-                "B" => "主密钥",
-                "P" => "主密钥（公开部分）",
-                "S" => "子密钥",
+                "B" => Loc.Get("Gpg_KeyType_Primary"),
+                "P" => Loc.Get("Gpg_KeyType_PrimaryPublic"),
+                "S" => Loc.Get("Gpg_KeyType_Subkey"),
                 _ => created.Arg(0),
             });
         }
 
         if (Find(status, "BAD_PASSPHRASE") is not null)
         {
-            report.Note("密码不符合 gpg-agent 的策略要求。");
+            report.Note(Loc.Get("Gpg_Note_BadPassphrasePolicy"));
         }
     }
 
@@ -421,33 +423,33 @@ public static class GpgOutputInterpreter
         string? outputPath,
         IReadOnlyList<string>? recipients)
     {
-        report.Title = result.Success ? "文件已加密" : "加密失败";
-        report.With("输出文件", outputPath);
+        report.Title = Loc.Get(result.Success ? "Gpg_Encrypt_Done" : "Gpg_Encrypt_Failed");
+        report.With(Loc.Get("Gpg_Row_OutputFile"), outputPath);
 
         GpgStatusLine? invalid = Find(status, "INV_RECP");
         if (invalid is not null)
         {
-            report.With("无效接收者", invalid.Raw, GpgReportSeverity.Error);
+            report.With(Loc.Get("Gpg_Row_InvalidRecipient"), invalid.Raw, GpgReportSeverity.Error);
         }
 
         GpgStatusLine? missing = Find(status, "NO_RECP");
         if (missing is not null)
         {
-            report.With("缺少接收者", "没有可用于加密的密钥", GpgReportSeverity.Error);
+            report.With(Loc.Get("Gpg_Row_NoRecipient"), Loc.Get("Gpg_Value_NoEncryptionKey"), GpgReportSeverity.Error);
         }
 
         foreach (GpgStatusLine line in status.Where(s => s.Keyword == "ENC_TO"))
         {
-            report.With("接收者密钥", ShortKeyId(line.Arg(0)));
+            report.With(Loc.Get("Gpg_Row_RecipientKey"), ShortKeyId(line.Arg(0)));
         }
 
         if (recipients is not null && recipients.Count > 0)
         {
-            report.With("接收者数量", recipients.Count.ToString(CultureInfo.InvariantCulture));
+            report.With(Loc.Get("Gpg_Row_RecipientCount"), recipients.Count.ToString(CultureInfo.InvariantCulture));
         }
 
         bool signed = Find(status, "SIG_CREATED") is not null;
-        report.With("同时签名", signed ? "是" : "否");
+        report.With(Loc.Get("Gpg_Row_AlsoSigned"), Loc.Get(signed ? "Common_Yes" : "Common_No"));
     }
 
     private static void DescribeDecryption(
@@ -458,39 +460,39 @@ public static class GpgOutputInterpreter
         string? outputPath)
     {
         GpgStatusLine? plaintext = Find(status, "PLAINTEXT");
-        report.Title = result.Success ? "文件已解密" : "解密失败";
+        report.Title = Loc.Get(result.Success ? "Gpg_Decrypt_Done" : "Gpg_Decrypt_Failed");
 
-        report.With("输入文件", inputPath is null ? null : Path.GetFileName(inputPath));
-        report.With("输出文件", outputPath);
+        report.With(Loc.Get("Gpg_Row_InputFile"), inputPath is null ? null : Path.GetFileName(inputPath));
+        report.With(Loc.Get("Gpg_Row_OutputFile"), outputPath);
 
         if (plaintext is not null)
         {
             string name = plaintext.Arg(2);
             if (name.Length > 0 && name != "_CONSOLE")
             {
-                report.With("原始文件名", name);
+                report.With(Loc.Get("Gpg_Row_OriginalFileName"), name);
             }
         }
 
         GpgStatusLine? length = Find(status, "PLAINTEXT_LENGTH");
         if (length is not null)
         {
-            report.With("明文长度", length.Arg(0) + " 字节");
+            report.With(Loc.Get("Gpg_Row_PlaintextLength"), Loc.Format("Gpg_Value_Bytes", length.Arg(0)));
         }
 
         if (Find(status, "DECRYPTION_FAILED") is not null)
         {
-            report.With("解密结果", "解密失败", GpgReportSeverity.Error);
+            report.With(Loc.Get("Gpg_Row_DecryptionResult"), Loc.Get("Gpg_Decrypt_Failed"), GpgReportSeverity.Error);
         }
 
         if (Find(status, "MISSING_PASSPHRASE") is not null)
         {
-            report.Note("该私钥需要密码，但未提供密码。");
+            report.Note(Loc.Get("Gpg_Note_MissingPassphrase"));
         }
 
         if (Find(status, "BAD_PASSPHRASE") is not null)
         {
-            report.With("密码", "密码错误", GpgReportSeverity.Error);
+            report.With(Loc.Get("Gpg_Row_Passphrase"), Loc.Get("Gpg_Value_BadPassphrase"), GpgReportSeverity.Error);
         }
     }
 
@@ -501,21 +503,21 @@ public static class GpgOutputInterpreter
         string? inputPath,
         string? outputPath)
     {
-        report.Title = result.Success ? "文件已签名" : "签名失败";
-        report.With("输入文件", inputPath is null ? null : Path.GetFileName(inputPath));
-        report.With("输出文件", outputPath);
+        report.Title = Loc.Get(result.Success ? "Gpg_Sign_Done" : "Gpg_Sign_Failed");
+        report.With(Loc.Get("Gpg_Row_InputFile"), inputPath is null ? null : Path.GetFileName(inputPath));
+        report.With(Loc.Get("Gpg_Row_OutputFile"), outputPath);
 
         GpgStatusLine? created = Find(status, "SIG_CREATED");
         if (created is not null)
         {
-            report.With("签名类型", DescribeSignatureClass(created.Arg(0)));
-            report.With("公钥算法", DescribeAlgorithm(created.Arg(1)));
-            report.With("摘要算法", DescribeHashAlgorithm(created.Arg(2)));
+            report.With(Loc.Get("Gpg_Row_SignatureType"), DescribeSignatureClass(created.Arg(0)));
+            report.With(Loc.Get("Gpg_Row_PublicKeyAlgorithm"), DescribeAlgorithm(created.Arg(1)));
+            report.With(Loc.Get("Gpg_Row_HashAlgorithm"), DescribeHashAlgorithm(created.Arg(2)));
         }
 
         if (Find(status, "BAD_PASSPHRASE") is not null)
         {
-            report.With("密码", "密码错误", GpgReportSeverity.Error);
+            report.With(Loc.Get("Gpg_Row_Passphrase"), Loc.Get("Gpg_Value_BadPassphrase"), GpgReportSeverity.Error);
         }
     }
 
@@ -528,25 +530,25 @@ public static class GpgOutputInterpreter
 
         return code switch
         {
-            0x00 => "二进制文档",
-            0x01 => "规范文本",
-            0x10 => "通用认证",
-            0x11 => "个人认证",
-            0x12 => "随性认证",
-            0x13 => "肯定认证",
+            0x00 => Loc.Get("Gpg_SigClass_Binary"),
+            0x01 => Loc.Get("Gpg_SigClass_CanonicalText"),
+            0x10 => Loc.Get("Gpg_SigClass_Generic"),
+            0x11 => Loc.Get("Gpg_SigClass_Persona"),
+            0x12 => Loc.Get("Gpg_SigClass_Casual"),
+            0x13 => Loc.Get("Gpg_SigClass_Positive"),
             _ => "0x" + code.ToString("X2", CultureInfo.InvariantCulture),
         };
     }
 
-    private static string DescribeTrust(string keyword) => keyword switch
+    private static string DescribeTrust(string keyword) => Loc.Get(keyword switch
     {
-        "TRUST_UNDEFINED" => "未定义",
-        "TRUST_NEVER" => "不可信",
-        "TRUST_MARGINAL" => "勉强可信",
-        "TRUST_FULLY" => "完全可信",
-        "TRUST_ULTIMATE" => "绝对可信（自有密钥）",
+        "TRUST_UNDEFINED" => "Gpg_Trust_Undefined",
+        "TRUST_NEVER" => "Gpg_Trust_Never",
+        "TRUST_MARGINAL" => "Gpg_Trust_Marginal",
+        "TRUST_FULLY" => "Gpg_Trust_Fully",
+        "TRUST_ULTIMATE" => "Gpg_Trust_Ultimate",
         _ => keyword,
-    };
+    });
 
     private static void AddNotes(GpgOperationReport report, GpgResult result, IReadOnlyList<GpgStatusLine> status)
     {

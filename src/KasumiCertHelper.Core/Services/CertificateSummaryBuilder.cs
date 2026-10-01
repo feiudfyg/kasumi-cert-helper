@@ -1,6 +1,7 @@
 using System.Formats.Asn1;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using KasumiCertHelper.Core.Localization;
 using System.Text;
 using KasumiCertHelper.Core.Models;
 
@@ -71,14 +72,14 @@ public static class CertificateSummaryBuilder
         DateTime now = DateTime.Now;
         if (now < certificate.NotBefore)
         {
-            return "尚未生效";
+            return Loc.Get("Cert_Validity_NotYetValid");
         }
         if (now > certificate.NotAfter)
         {
-            return "已过期";
+            return Loc.Get("Cert_Validity_Expired");
         }
         int days = (int)Math.Floor((certificate.NotAfter - now).TotalDays);
-        return days <= 30 ? $"有效（{days} 天后过期）" : "有效";
+        return days <= 30 ? Loc.Format("Cert_Validity_ExpiringSoon", days) : Loc.Get("Cert_Validity_Ok");
     }
 
     private static string TryFriendlyName(X509Certificate2 certificate)
@@ -281,7 +282,7 @@ public static class CertificateSummaryBuilder
             }
 
             string name = extension.Oid?.FriendlyName ?? oid;
-            lines.Add(extension.Critical ? name + "（关键）" : name);
+            lines.Add(extension.Critical ? name + Loc.Get("Cert_Suffix_Critical") : name);
         }
 
         return lines;

@@ -5,6 +5,8 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 
+using KasumiCertHelper.Core.Localization;
+
 namespace KasumiCertHelper.Controls;
 
 /// <summary>
@@ -47,7 +49,7 @@ public static class ResultPresenter
         {
             host.Children.Add(new TextBlock
             {
-                Text = "GnuPG 没有提供更多信息。",
+                Text = Loc.Get("Result_NoDetails"),
                 TextWrapping = TextWrapping.Wrap,
                 Foreground = Resource("TextFillColorSecondaryBrush"),
             });
@@ -72,7 +74,7 @@ public static class ResultPresenter
 
         var title = new TextBlock
         {
-            Text = string.IsNullOrWhiteSpace(report.Title) ? "操作结果" : report.Title,
+            Text = string.IsNullOrWhiteSpace(report.Title) ? Loc.Get("Result_Title") : report.Title,
             FontSize = 16,
             FontWeight = FontWeights.SemiBold,
             TextWrapping = TextWrapping.Wrap,
@@ -144,7 +146,7 @@ public static class ResultPresenter
         var host = new StackPanel { Spacing = 4 };
         host.Children.Add(new TextBlock
         {
-            Text = "说明",
+            Text = Loc.Get("Result_Notes"),
             FontWeight = FontWeights.SemiBold,
         });
 
@@ -204,7 +206,7 @@ public static class ResultPresenter
 
         return new Expander
         {
-            Header = "命令与原始输出",
+            Header = Loc.Get("Result_CommandAndOutput"),
             HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
             Content = content,

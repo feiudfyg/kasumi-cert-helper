@@ -29,26 +29,26 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <TextBlock Grid.Row="0" Grid.Column="0" Text="数据库" Style="{StaticResource ToolbarGroupCaptionStyle}" />
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="{x:Bind T('X509_Toolbar_DatabaseGroup')}" Style="{StaticResource ToolbarGroupCaptionStyle}" />
                 <ScrollViewer Grid.Row="0" Grid.Column="1" HorizontalScrollBarVisibility="Auto"
                               HorizontalScrollMode="Auto" VerticalScrollBarVisibility="Disabled">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <Button x:Name="NewDbButton" Click="OnNewDatabaseClick">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <FontIcon Glyph="&#xE710;" FontSize="14" />
-                                <TextBlock Text="新建数据库" />
+                                <TextBlock Text="{x:Bind T('X509_NewDatabase')}" />
                             </StackPanel>
                         </Button>
                         <Button x:Name="OpenDbButton" Click="OnOpenDatabaseClick">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <FontIcon Glyph="&#xE8E5;" FontSize="14" />
-                                <TextBlock Text="打开数据库" />
+                                <TextBlock Text="{x:Bind T('X509_OpenDatabase')}" />
                             </StackPanel>
                         </Button>
                         <Button x:Name="CloseDbButton" Click="OnCloseDatabaseClick">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <FontIcon Glyph="&#xE711;" FontSize="14" />
-                                <TextBlock Text="关闭数据库" />
+                                <TextBlock Text="{x:Bind T('X509_CloseDatabase')}" />
                             </StackPanel>
                         </Button>
                     </StackPanel>
@@ -56,69 +56,69 @@
                 <ProgressRing x:Name="BusyRing" Grid.Row="0" Grid.Column="2" IsActive="False" Width="20" Height="20"
                               VerticalAlignment="Center" />
 
-                <TextBlock Grid.Row="1" Grid.Column="0" Text="新建" Style="{StaticResource ToolbarGroupCaptionStyle}" />
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="{x:Bind T('X509_Toolbar_CreateGroup')}" Style="{StaticResource ToolbarGroupCaptionStyle}" />
                 <ScrollViewer Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" HorizontalScrollBarVisibility="Auto"
                               HorizontalScrollMode="Auto" VerticalScrollBarVisibility="Disabled">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <Button x:Name="NewKeyButton" Click="OnNewKeyClick">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <FontIcon Glyph="&#xE8D7;" FontSize="14" />
-                                <TextBlock Text="密钥" />
+                                <TextBlock Text="{x:Bind T('X509_NewKey')}" />
                             </StackPanel>
                         </Button>
                         <Button x:Name="NewCertButton" Click="OnNewCertificateClick">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <FontIcon Glyph="&#xE8D7;" FontSize="14" />
-                                <TextBlock Text="自签名证书" />
+                                <TextBlock Text="{x:Bind T('X509_NewSelfSigned')}" />
                             </StackPanel>
                         </Button>
                         <Button x:Name="NewCaButton" Click="OnNewCaClick">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <FontIcon Glyph="&#xE72E;" FontSize="14" />
-                                <TextBlock Text="CA 证书" />
+                                <TextBlock Text="{x:Bind T('X509_NewCa')}" />
                             </StackPanel>
                         </Button>
                         <Button x:Name="NewCsrButton" Click="OnNewCsrClick">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <FontIcon Glyph="&#xE8A5;" FontSize="14" />
-                                <TextBlock Text="证书请求 (CSR)" />
+                                <TextBlock Text="{x:Bind T('X509_NewCsr')}" />
                             </StackPanel>
                         </Button>
                         <Button x:Name="SignCsrButton" Click="OnSignCsrClick">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <FontIcon Glyph="&#xE70F;" FontSize="14" />
-                                <TextBlock Text="用 CA 签发" />
+                                <TextBlock Text="{x:Bind T('X509_SignCsr')}" />
                             </StackPanel>
                         </Button>
                     </StackPanel>
                 </ScrollViewer>
 
-                <TextBlock Grid.Row="2" Grid.Column="0" Text="操作" Style="{StaticResource ToolbarGroupCaptionStyle}" />
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="{x:Bind T('X509_Toolbar_ActionsGroup')}" Style="{StaticResource ToolbarGroupCaptionStyle}" />
                 <ScrollViewer Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" HorizontalScrollBarVisibility="Auto"
                               HorizontalScrollMode="Auto" VerticalScrollBarVisibility="Disabled">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <Button x:Name="ImportButton" Click="OnImportClick">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <FontIcon Glyph="&#xE8B5;" FontSize="14" />
-                                <TextBlock Text="导入" />
+                                <TextBlock Text="{x:Bind T('Common_Import')}" />
                             </StackPanel>
                         </Button>
                         <Button x:Name="ExportButton" Click="OnExportClick">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <FontIcon Glyph="&#xE898;" FontSize="14" />
-                                <TextBlock Text="导出" />
+                                <TextBlock Text="{x:Bind T('Common_Export')}" />
                             </StackPanel>
                         </Button>
                         <Button x:Name="DeleteButton" Click="OnDeleteClick">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <FontIcon Glyph="&#xE74D;" FontSize="14" />
-                                <TextBlock Text="删除" />
+                                <TextBlock Text="{x:Bind T('Common_Delete')}" />
                             </StackPanel>
                         </Button>
                         <Button x:Name="PasswordButton" Click="OnChangePasswordClick">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <FontIcon Glyph="&#xE72E;" FontSize="14" />
-                                <TextBlock Text="修改数据库密码" />
+                                <TextBlock Text="{x:Bind T('X509_ChangePassword')}" />
                             </StackPanel>
                         </Button>
                     </StackPanel>
@@ -134,7 +134,7 @@
                 <ColumnDefinition Width="*" MinWidth="280" />
             </Grid.ColumnDefinitions>
 
-            <!-- 数据库项目 -->
+            <!-- Database items -->
             <Grid Grid.Column="0">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -146,17 +146,17 @@
                 <StackPanel Grid.Row="0" Padding="12,12,12,8" Spacing="4">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <TextBlock x:Name="DatabaseTitle" FontWeight="SemiBold" FontSize="15"
-                                   TextTrimming="CharacterEllipsis" Text="未打开数据库" />
+                                   TextTrimming="CharacterEllipsis" Text="{x:Bind T('X509_NoDatabase')}" />
                         <TextBlock x:Name="ItemCountText" VerticalAlignment="Center" FontSize="12"
                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                     </StackPanel>
                     <TextBlock x:Name="DatabaseSubtitle" FontSize="12" TextWrapping="Wrap"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                               Text="请新建或打开一个证书数据库以管理密钥、证书与证书请求。" />
+                               Text="{x:Bind T('X509_NoDatabaseHint')}" />
                 </StackPanel>
 
                 <TextBox x:Name="ItemFilterBox" Grid.Row="1" Margin="12,0,12,8"
-                         PlaceholderText="筛选：名称 / 主题 / 类型 / 备注" TextChanged="OnItemFilterChanged" />
+                         PlaceholderText="{x:Bind T('X509_FilterPlaceholder')}" TextChanged="OnItemFilterChanged" />
 
                 <Grid Grid.Row="2" Padding="12,4,8,4" ColumnSpacing="10" BorderThickness="0,1,0,1"
                       BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
@@ -167,16 +167,16 @@
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
-                    <TextBlock x:Name="ItemHeaderName" Grid.Column="0" Text="名称" Style="{StaticResource TableHeaderTextStyle}" />
-                    <TextBlock x:Name="ItemHeaderKind" Grid.Column="1" Text="类型" Style="{StaticResource TableHeaderTextStyle}" />
-                    <TextBlock x:Name="ItemHeaderStatus" Grid.Column="2" Text="状态" Style="{StaticResource TableHeaderTextStyle}" />
+                    <TextBlock x:Name="ItemHeaderName" Grid.Column="0" Text="{x:Bind T('X509_HeaderName')}" Style="{StaticResource TableHeaderTextStyle}" />
+                    <TextBlock x:Name="ItemHeaderKind" Grid.Column="1" Text="{x:Bind T('X509_HeaderKind')}" Style="{StaticResource TableHeaderTextStyle}" />
+                    <TextBlock x:Name="ItemHeaderStatus" Grid.Column="2" Text="{x:Bind T('Cert_Row_Status')}" Style="{StaticResource TableHeaderTextStyle}" />
 
                     <Border Grid.Column="0" Style="{StaticResource ColumnResizerStyle}" Tag="0"
-                            ManipulationDelta="OnColumnResize" ToolTipService.ToolTip="拖动调整列宽" />
+                            ManipulationDelta="OnColumnResize" ToolTipService.ToolTip="{x:Bind T('Common_DragToResizeColumn')}" />
                     <Border Grid.Column="1" Style="{StaticResource ColumnResizerStyle}" Tag="1"
-                            ManipulationDelta="OnColumnResize" ToolTipService.ToolTip="拖动调整列宽" />
+                            ManipulationDelta="OnColumnResize" ToolTipService.ToolTip="{x:Bind T('Common_DragToResizeColumn')}" />
                     <Border Grid.Column="2" Style="{StaticResource ColumnResizerStyle}" Tag="2"
-                            ManipulationDelta="OnColumnResize" ToolTipService.ToolTip="拖动调整列宽" />
+                            ManipulationDelta="OnColumnResize" ToolTipService.ToolTip="{x:Bind T('Common_DragToResizeColumn')}" />
                 </Grid>
 
                 <Grid x:Name="ItemListHost" Grid.Row="3" SizeChanged="OnTableSizeChanged">
@@ -219,7 +219,7 @@
                                 HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" MaxWidth="260">
                         <FontIcon Glyph="&#xE8D7;" FontSize="28"
                                   Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                        <TextBlock x:Name="ItemEmptyText" Text="数据库中没有项目" TextWrapping="Wrap"
+                        <TextBlock x:Name="ItemEmptyText" Text="{x:Bind T('X509_EmptyItems')}" TextWrapping="Wrap"
                                    TextAlignment="Center"
                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                     </StackPanel>
@@ -232,7 +232,7 @@
                         Background="{ThemeResource CardStrokeColorDefaultBrush}" />
             </Border>
 
-            <!-- 详细信息 -->
+            <!-- Details -->
             <Grid Grid.Column="2">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -241,7 +241,7 @@
 
                 <StackPanel Grid.Row="0" Padding="12,12,12,8" Spacing="2">
                     <TextBlock x:Name="DetailTitle" Style="{StaticResource PaneTitleStyle}"
-                               TextWrapping="Wrap" Text="详细信息" />
+                               TextWrapping="Wrap" Text="{x:Bind T('X509_DetailsTitle')}" />
                     <TextBlock x:Name="DetailStatusText" FontSize="12" TextWrapping="Wrap"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                 </StackPanel>
@@ -254,7 +254,7 @@
                             VerticalAlignment="Center" Spacing="8" MaxWidth="280" IsHitTestVisible="False">
                     <FontIcon Glyph="&#xE946;" FontSize="28"
                               Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                    <TextBlock Text="从左侧列表中选择一个项目，这里会显示解析后的详细信息。" TextWrapping="Wrap"
+                    <TextBlock Text="{x:Bind T('X509_DetailsEmptyHint')}" TextWrapping="Wrap"
                                TextAlignment="Center"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                 </StackPanel>

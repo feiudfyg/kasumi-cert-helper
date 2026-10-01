@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
+using KasumiCertHelper.Core.Localization;
 using System.Text.Json.Serialization;
 using KasumiCertHelper.Core.Models;
 
@@ -52,7 +53,7 @@ public sealed class X509Database
     {
         if (!File.Exists(filePath))
         {
-            throw new FileNotFoundException("找不到数据库文件。", filePath);
+            throw new FileNotFoundException(Loc.Get("Error_DatabaseFileMissing"), filePath);
         }
 
         string json = File.ReadAllText(filePath, Encoding.UTF8);
@@ -138,7 +139,7 @@ public sealed class X509Database
         string? keyId = null;
         if (!string.IsNullOrWhiteSpace(keyPem))
         {
-            X509Item keyItem = ImportKey(name + " (密钥)", keyPem, null, comment);
+            X509Item keyItem = ImportKey(name + Loc.Get("X509_KeyItemSuffix"), keyPem, null, comment);
             keyId = keyItem.Id;
         }
         return AddCertificate(name, certificate, keyId, comment);
@@ -183,7 +184,7 @@ public sealed class X509Database
     {
         if (string.IsNullOrEmpty(item.EncryptedKeyPem))
         {
-            throw new CryptographicException("该项目不包含私钥。");
+            throw new CryptographicException(Loc.Get("Error_ItemHasNoPrivateKey"));
         }
         return X509Factory.LoadPrivateKeyFromPem(item.EncryptedKeyPem, password);
     }

@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using KasumiCertHelper.Core.Localization;
 using System.Security.Cryptography.X509Certificates;
 using KasumiCertHelper.Core.Models;
 
@@ -13,18 +14,19 @@ public static class X509Factory
         "nistP256", "nistP384", "nistP521", "secp256k1", "brainpoolP256r1", "brainpoolP384r1", "brainpoolP512r1",
     };
 
-    public static readonly (string Name, string Oid)[] ExtendedKeyUsageChoices =
+    // Names are resource keys; resolve them with Loc.Get before showing them.
+    public static readonly (string NameKey, string Oid)[] ExtendedKeyUsageChoices =
     {
-        ("服务器身份验证", "1.3.6.1.5.5.7.3.1"),
-        ("客户端身份验证", "1.3.6.1.5.5.7.3.2"),
-        ("代码签名", "1.3.6.1.5.5.7.3.3"),
-        ("电子邮件保护", "1.3.6.1.5.5.7.3.4"),
-        ("时间戳", "1.3.6.1.5.5.7.3.8"),
-        ("OCSP 签名", "1.3.6.1.5.5.7.3.9"),
-        ("任意扩展密钥用法", "2.5.29.37.0"),
-        ("加密文件系统 (EFS)", "1.3.6.1.4.1.311.10.3.4"),
-        ("文档签名", "1.3.6.1.4.1.311.10.3.12"),
-        ("智能卡登录", "1.3.6.1.4.1.311.20.2.2"),
+        ("Cert_Eku_ServerAuth", "1.3.6.1.5.5.7.3.1"),
+        ("Cert_Eku_ClientAuth", "1.3.6.1.5.5.7.3.2"),
+        ("Cert_Eku_CodeSigning", "1.3.6.1.5.5.7.3.3"),
+        ("Cert_Eku_EmailProtection", "1.3.6.1.5.5.7.3.4"),
+        ("Cert_Eku_TimeStamping", "1.3.6.1.5.5.7.3.8"),
+        ("Cert_Eku_OcspSigning", "1.3.6.1.5.5.7.3.9"),
+        ("Cert_Eku_Any", "2.5.29.37.0"),
+        ("Cert_Eku_Efs", "1.3.6.1.4.1.311.10.3.4"),
+        ("Cert_Eku_DocumentSigning", "1.3.6.1.4.1.311.10.3.12"),
+        ("Cert_Eku_SmartCardLogon", "1.3.6.1.4.1.311.20.2.2"),
     };
 
     public static AsymmetricAlgorithm CreateKey(X509KeyOptions options)
@@ -37,7 +39,7 @@ public static class X509Factory
             case X509KeyAlgorithm.Ecdsa:
                 return ECDsa.Create(ResolveCurve(options.Curve));
             default:
-                throw new NotSupportedException("不支持的密钥算法。");
+                throw new NotSupportedException(Loc.Get("Error_UnsupportedKeyAlgorithm"));
         }
     }
 
@@ -110,7 +112,7 @@ public static class X509Factory
         {
             RSA rsa => X509SignatureGenerator.CreateForRSA(rsa, RSASignaturePadding.Pkcs1),
             ECDsa ecdsa => X509SignatureGenerator.CreateForECDsa(ecdsa),
-            _ => throw new NotSupportedException("该密钥算法不支持用于签名。"),
+            _ => throw new NotSupportedException(Loc.Get("Error_KeyAlgorithmCannotSign")),
         };
 
     public static CertificateRequest CreateRequest(AsymmetricAlgorithm key, X509CertificateOptions options)
@@ -125,7 +127,7 @@ public static class X509Factory
         {
             RSA rsa => new CertificateRequest(subject, rsa, hash, RSASignaturePadding.Pkcs1),
             ECDsa ecdsa => new CertificateRequest(subject, ecdsa, hash),
-            _ => throw new NotSupportedException("不支持的密钥算法。"),
+            _ => throw new NotSupportedException(Loc.Get("Error_UnsupportedKeyAlgorithm")),
         };
 
         PublicKey publicKey = request.PublicKey;
@@ -169,7 +171,7 @@ public static class X509Factory
 
         if (!issuerCertificate.HasPrivateKey)
         {
-            throw new CryptographicException("颁发者证书不包含私钥，无法签名。");
+            throw new CryptographicException(Loc.Get("Error_IssuerHasNoPrivateKey"));
         }
 
         DateTimeOffset notBefore = options.ResolveNotBefore();
@@ -190,7 +192,7 @@ public static class X509Factory
         if (notAfter <= notBefore)
         {
             throw new CryptographicException(
-                $"有效期超出颁发者证书的有效期范围（颁发者有效期至 {issuerCertificate.NotAfter:yyyy-MM-dd HH:mm:ss}）。");
+                Loc.Format("Error_ValidityExceedsIssuer", issuerCertificate.NotAfter.ToString("yyyy-MM-dd HH:mm:ss")));
         }
 
         byte[] serial = ParseSerial(options.SerialNumberHex) ?? GenerateSerialNumber();
@@ -223,7 +225,7 @@ public static class X509Factory
     {
         if (string.IsNullOrWhiteSpace(pem))
         {
-            throw new CryptographicException("私钥内容为空。");
+            throw new CryptographicException(Loc.Get("Error_EmptyPrivateKey"));
         }
 
         IEnumerable<Func<AsymmetricAlgorithm>> factories = new Func<AsymmetricAlgorithm>[]
@@ -236,7 +238,7 @@ public static class X509Factory
         bool encrypted = pem.Contains("ENCRYPTED PRIVATE KEY", StringComparison.Ordinal);
         if (encrypted && string.IsNullOrEmpty(password))
         {
-            throw new CryptographicException("私钥已加密，请提供密码。");
+            throw new CryptographicException(Loc.Get("Error_PrivateKeyEncrypted"));
         }
 
         Exception? lastError = null;
@@ -262,6 +264,6 @@ public static class X509Factory
             }
         }
 
-        throw new CryptographicException("无法识别的私钥格式。", lastError);
+        throw new CryptographicException(Loc.Get("Error_UnrecognizedPrivateKeyFormat"), lastError);
     }
 }

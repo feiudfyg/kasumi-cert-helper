@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using KasumiCertHelper.Core.Localization;
 
 namespace KasumiCertHelper.Core.Models;
 
@@ -59,9 +60,9 @@ public sealed class X509Item
     [JsonIgnore]
     public string KindText => Kind switch
     {
-        X509ItemKind.PrivateKey => "私钥",
-        X509ItemKind.Certificate => "证书",
-        X509ItemKind.Csr => "证书请求",
+        X509ItemKind.PrivateKey => Loc.Get("X509_Kind_PrivateKey"),
+        X509ItemKind.Certificate => Loc.Get("X509_Kind_Certificate"),
+        X509ItemKind.Csr => Loc.Get("X509_Kind_Csr"),
         _ => Kind.ToString(),
     };
 
@@ -88,9 +89,9 @@ public sealed class X509Item
                 return string.Empty;
             }
             DateTime now = DateTime.Now;
-            if (now < NotBefore.Value) return "尚未生效";
-            if (now > NotAfter.Value) return "已过期";
-            return "有效";
+            if (now < NotBefore.Value) return Loc.Get("Cert_Validity_NotYetValid");
+            if (now > NotAfter.Value) return Loc.Get("Cert_Validity_Expired");
+            return Loc.Get("Cert_Validity_Ok");
         }
     }
 

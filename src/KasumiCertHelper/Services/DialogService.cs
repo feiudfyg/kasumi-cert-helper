@@ -1,3 +1,4 @@
+using KasumiCertHelper.Core.Localization;
 using KasumiCertHelper.Core.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -15,7 +16,7 @@ public static class DialogService
         return await dialog.ShowAsync();
     }
 
-    public static async Task ShowMessageAsync(string title, string message, string closeText = "确定")
+    public static async Task ShowMessageAsync(string title, string message, string? closeText = null)
     {
         if (GetXamlRoot() is null)
         {
@@ -26,13 +27,13 @@ public static class DialogService
         {
             Title = title,
             Content = CreateScrollableText(message),
-            CloseButtonText = closeText,
+            CloseButtonText = closeText ?? Loc.Get("Common_Ok"),
             DefaultButton = ContentDialogButton.Close,
         };
         await ShowAsync(dialog);
     }
 
-    public static async Task<bool> ShowConfirmAsync(string title, string message, string primaryText = "确定", string closeText = "取消")
+    public static async Task<bool> ShowConfirmAsync(string title, string message, string? primaryText = null, string? closeText = null)
     {
         if (GetXamlRoot() is null)
         {
@@ -43,8 +44,8 @@ public static class DialogService
         {
             Title = title,
             Content = CreateScrollableText(message),
-            PrimaryButtonText = primaryText,
-            CloseButtonText = closeText,
+            PrimaryButtonText = primaryText ?? Loc.Get("Common_Ok"),
+            CloseButtonText = closeText ?? Loc.Get("Common_Cancel"),
             DefaultButton = ContentDialogButton.Close,
         };
         return await ShowAsync(dialog) == ContentDialogResult.Primary;
@@ -81,8 +82,8 @@ public static class DialogService
         {
             Title = title,
             Content = panel,
-            PrimaryButtonText = "确定",
-            CloseButtonText = "取消",
+            PrimaryButtonText = Loc.Get("Common_Ok"),
+            CloseButtonText = Loc.Get("Common_Cancel"),
             DefaultButton = ContentDialogButton.Primary,
         };
 
@@ -97,7 +98,7 @@ public static class DialogService
         }
 
         var first = new PasswordBox { PlaceholderText = label, MinWidth = 380 };
-        var second = new PasswordBox { PlaceholderText = "再次输入密码", MinWidth = 380, Visibility = confirmRequired ? Visibility.Visible : Visibility.Collapsed };
+        var second = new PasswordBox { PlaceholderText = Loc.Get("Dialog_RepeatPassword"), MinWidth = 380, Visibility = confirmRequired ? Visibility.Visible : Visibility.Collapsed };
         var error = new TextBlock { Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.OrangeRed), Visibility = Visibility.Collapsed };
 
         var panel = new StackPanel { Spacing = 8 };
@@ -113,8 +114,8 @@ public static class DialogService
         {
             Title = title,
             Content = panel,
-            PrimaryButtonText = "确定",
-            CloseButtonText = "取消",
+            PrimaryButtonText = Loc.Get("Common_Ok"),
+            CloseButtonText = Loc.Get("Common_Cancel"),
             DefaultButton = ContentDialogButton.Primary,
         };
 
@@ -125,7 +126,7 @@ public static class DialogService
                 if (first.Password != second.Password)
                 {
                     args.Cancel = true;
-                    error.Text = "两次输入的密码不一致。";
+                    error.Text = Loc.Get("Dialog_PasswordMismatch");
                     error.Visibility = Visibility.Visible;
                 }
             };
@@ -158,11 +159,12 @@ public static class DialogService
         if (exception is UnauthorizedAccessException ||
             text.Contains("Access is denied", StringComparison.OrdinalIgnoreCase) ||
             text.Contains("拒绝访问", StringComparison.OrdinalIgnoreCase) ||
+                text.Contains("Access is denied", StringComparison.OrdinalIgnoreCase) ||
             text.Contains("access denied", StringComparison.OrdinalIgnoreCase))
         {
             text += Environment.NewLine + Environment.NewLine +
-                    "提示：该操作需要管理员权限。请以管理员身份重新启动本程序后再试。" +
-                    (ElevationHelper.IsAdministrator() ? string.Empty : " (当前进程不是管理员)");
+                    Loc.Get("Dialog_NeedAdminHint") +
+                    (ElevationHelper.IsAdministrator() ? string.Empty : Loc.Get("Dialog_NotAdminSuffix"));
         }
         return text;
     }

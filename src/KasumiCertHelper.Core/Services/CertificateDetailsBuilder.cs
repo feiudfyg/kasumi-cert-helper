@@ -2,32 +2,35 @@ using System.Formats.Asn1;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using KasumiCertHelper.Core.Localization;
 
 namespace KasumiCertHelper.Core.Services;
 
 public static class CertificateDetailsBuilder
 {
+    // Resource keys, resolved on demand so a language change is picked up by the next certificate
+    // that is opened instead of freezing the text the first time this type is touched.
     private static readonly Dictionary<string, string> EkuNames = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["1.3.6.1.5.5.7.3.1"] = "服务器身份验证 (TLS Web Server Authentication)",
-        ["1.3.6.1.5.5.7.3.2"] = "客户端身份验证 (TLS Web Client Authentication)",
-        ["1.3.6.1.5.5.7.3.3"] = "代码签名 (Code Signing)",
-        ["1.3.6.1.5.5.7.3.4"] = "电子邮件保护 (E-mail Protection)",
-        ["1.3.6.1.5.5.7.3.5"] = "IPSec 终端系统",
-        ["1.3.6.1.5.5.7.3.6"] = "IPSec 隧道终端",
-        ["1.3.6.1.5.5.7.3.7"] = "IPSec 用户",
-        ["1.3.6.1.5.5.7.3.8"] = "时间戳 (Time Stamping)",
-        ["1.3.6.1.5.5.7.3.9"] = "OCSP 签名 (OCSP Signing)",
+        ["1.3.6.1.5.5.7.3.1"] = "Cert_Eku_ServerAuth",
+        ["1.3.6.1.5.5.7.3.2"] = "Cert_Eku_ClientAuth",
+        ["1.3.6.1.5.5.7.3.3"] = "Cert_Eku_CodeSigning",
+        ["1.3.6.1.5.5.7.3.4"] = "Cert_Eku_EmailProtection",
+        ["1.3.6.1.5.5.7.3.5"] = "Cert_Eku_IpsecEndSystem",
+        ["1.3.6.1.5.5.7.3.6"] = "Cert_Eku_IpsecTunnel",
+        ["1.3.6.1.5.5.7.3.7"] = "Cert_Eku_IpsecUser",
+        ["1.3.6.1.5.5.7.3.8"] = "Cert_Eku_TimeStamping",
+        ["1.3.6.1.5.5.7.3.9"] = "Cert_Eku_OcspSigning",
         ["1.3.6.1.5.5.7.3.10"] = "DVCS",
-        ["2.5.29.37.0"] = "任意扩展密钥用法",
-        ["1.3.6.1.4.1.311.10.3.1"] = "Microsoft 信任列表签名",
-        ["1.3.6.1.4.1.311.10.3.4"] = "加密文件系统 (EFS)",
-        ["1.3.6.1.4.1.311.10.3.4.1"] = "EFS 恢复",
-        ["1.3.6.1.4.1.311.10.3.12"] = "文档签名",
-        ["1.3.6.1.4.1.311.20.2.2"] = "智能卡登录",
-        ["1.3.6.1.4.1.311.21.6"] = "密钥恢复",
-        ["1.3.6.1.5.2.3.4"] = "PKINIT 客户端身份验证",
-        ["1.3.6.1.5.2.3.5"] = "PKINIT KDC",
+        ["2.5.29.37.0"] = "Cert_Eku_Any",
+        ["1.3.6.1.4.1.311.10.3.1"] = "Cert_Eku_MsTrustListSigning",
+        ["1.3.6.1.4.1.311.10.3.4"] = "Cert_Eku_Efs",
+        ["1.3.6.1.4.1.311.10.3.4.1"] = "Cert_Eku_EfsRecovery",
+        ["1.3.6.1.4.1.311.10.3.12"] = "Cert_Eku_DocumentSigning",
+        ["1.3.6.1.4.1.311.20.2.2"] = "Cert_Eku_SmartCardLogon",
+        ["1.3.6.1.4.1.311.21.6"] = "Cert_Eku_KeyRecovery",
+        ["1.3.6.1.5.2.3.4"] = "Cert_Eku_PkinitClient",
+        ["1.3.6.1.5.2.3.5"] = "Cert_Eku_PkinitKdc",
     };
 
     public static bool IsCa(X509Certificate2 certificate)
@@ -52,16 +55,16 @@ public static class CertificateDetailsBuilder
         {
             if ((flags & f) != 0) names.Add(name);
         }
-        Add(X509KeyUsageFlags.DigitalSignature, "数字签名");
-        Add(X509KeyUsageFlags.NonRepudiation, "不可否认性");
-        Add(X509KeyUsageFlags.KeyEncipherment, "密钥加密");
-        Add(X509KeyUsageFlags.DataEncipherment, "数据加密");
-        Add(X509KeyUsageFlags.KeyAgreement, "密钥协商");
-        Add(X509KeyUsageFlags.KeyCertSign, "证书签名");
-        Add(X509KeyUsageFlags.CrlSign, "CRL 签名");
-        Add(X509KeyUsageFlags.EncipherOnly, "仅加密");
-        Add(X509KeyUsageFlags.DecipherOnly, "仅解密");
-        return string.Join(", ", names);
+        Add(X509KeyUsageFlags.DigitalSignature, Loc.Get("Cert_KeyUsage_DigitalSignature"));
+        Add(X509KeyUsageFlags.NonRepudiation, Loc.Get("Cert_KeyUsage_NonRepudiation"));
+        Add(X509KeyUsageFlags.KeyEncipherment, Loc.Get("Cert_KeyUsage_KeyEncipherment"));
+        Add(X509KeyUsageFlags.DataEncipherment, Loc.Get("Cert_KeyUsage_DataEncipherment"));
+        Add(X509KeyUsageFlags.KeyAgreement, Loc.Get("Cert_KeyUsage_KeyAgreement"));
+        Add(X509KeyUsageFlags.KeyCertSign, Loc.Get("Cert_KeyUsage_KeyCertSign"));
+        Add(X509KeyUsageFlags.CrlSign, Loc.Get("Cert_KeyUsage_CrlSign"));
+        Add(X509KeyUsageFlags.EncipherOnly, Loc.Get("Cert_KeyUsage_EncipherOnly"));
+        Add(X509KeyUsageFlags.DecipherOnly, Loc.Get("Cert_KeyUsage_DecipherOnly"));
+        return string.Join(Loc.Get("Common_ListSeparator"), names);
     }
 
     public static IReadOnlyList<string> GetEnhancedKeyUsages(X509Certificate2 certificate)
@@ -78,7 +81,9 @@ public static class CertificateDetailsBuilder
         foreach (Oid oid in eku.EnhancedKeyUsages)
         {
             string value = oid?.Value ?? string.Empty;
-            string name = EkuNames.TryGetValue(value, out string? friendly) ? friendly : (oid?.FriendlyName ?? value);
+            string name = EkuNames.TryGetValue(value, out string? friendly)
+                ? Loc.Get(friendly)
+                : (oid?.FriendlyName ?? value);
             result.Add(name);
         }
         return result;
@@ -163,9 +168,14 @@ public static class CertificateDetailsBuilder
             return extension switch
             {
                 X509BasicConstraintsExtension bc =>
-                    $"CA = {(bc.CertificateAuthority ? "是" : "否")}；路径长度限制 = {(bc.HasPathLengthConstraint ? bc.PathLengthConstraint.ToString() : "无")}",
+                    Loc.Format(
+                        "Cert_Value_BasicConstraints",
+                        Loc.Get(bc.CertificateAuthority ? "Common_Yes" : "Common_No"),
+                        bc.HasPathLengthConstraint ? bc.PathLengthConstraint.ToString() : Loc.Get("Common_None")),
                 X509KeyUsageExtension ku => GetKeyUsageTextFromFlags(ku.KeyUsages),
-                X509EnhancedKeyUsageExtension eku => string.Join("；", eku.EnhancedKeyUsages.Cast<Oid>().Select(o => o?.FriendlyName ?? o?.Value ?? string.Empty)),
+                X509EnhancedKeyUsageExtension eku => string.Join(
+                    Loc.Get("Common_SentenceSeparator"),
+                    eku.EnhancedKeyUsages.Cast<Oid>().Select(o => o?.FriendlyName ?? o?.Value ?? string.Empty)),
                 X509SubjectKeyIdentifierExtension ski => ski.SubjectKeyIdentifier,
                 _ => Convert.ToHexString(extension.RawData),
             };
@@ -187,16 +197,18 @@ public static class CertificateDetailsBuilder
             }
         }
 
-        Add(X509KeyUsageFlags.DigitalSignature, "数字签名");
-        Add(X509KeyUsageFlags.NonRepudiation, "不可否认性");
-        Add(X509KeyUsageFlags.KeyEncipherment, "密钥加密");
-        Add(X509KeyUsageFlags.DataEncipherment, "数据加密");
-        Add(X509KeyUsageFlags.KeyAgreement, "密钥协商");
-        Add(X509KeyUsageFlags.KeyCertSign, "证书签名");
-        Add(X509KeyUsageFlags.CrlSign, "CRL 签名");
-        Add(X509KeyUsageFlags.EncipherOnly, "仅加密");
-        Add(X509KeyUsageFlags.DecipherOnly, "仅解密");
-        return names.Count == 0 ? "无" : string.Join("、", names);
+        Add(X509KeyUsageFlags.DigitalSignature, Loc.Get("Cert_KeyUsage_DigitalSignature"));
+        Add(X509KeyUsageFlags.NonRepudiation, Loc.Get("Cert_KeyUsage_NonRepudiation"));
+        Add(X509KeyUsageFlags.KeyEncipherment, Loc.Get("Cert_KeyUsage_KeyEncipherment"));
+        Add(X509KeyUsageFlags.DataEncipherment, Loc.Get("Cert_KeyUsage_DataEncipherment"));
+        Add(X509KeyUsageFlags.KeyAgreement, Loc.Get("Cert_KeyUsage_KeyAgreement"));
+        Add(X509KeyUsageFlags.KeyCertSign, Loc.Get("Cert_KeyUsage_KeyCertSign"));
+        Add(X509KeyUsageFlags.CrlSign, Loc.Get("Cert_KeyUsage_CrlSign"));
+        Add(X509KeyUsageFlags.EncipherOnly, Loc.Get("Cert_KeyUsage_EncipherOnly"));
+        Add(X509KeyUsageFlags.DecipherOnly, Loc.Get("Cert_KeyUsage_DecipherOnly"));
+        return names.Count == 0
+            ? Loc.Get("Common_None")
+            : string.Join(Loc.Get("Common_ListSeparator"), names);
     }
 
     public static string BuildTextReport(X509Certificate2 certificate)
@@ -205,52 +217,52 @@ public static class CertificateDetailsBuilder
         void Line(string label, string? value)
             => sb.Append("  ").Append(label.PadRight(18)).Append(": ").AppendLine(value ?? string.Empty);
 
-        sb.AppendLine("=== 基本信息 ===");
-        Line("版本", "V" + certificate.Version);
-        Line("序列号", certificate.SerialNumber);
-        Line("签名算法", certificate.SignatureAlgorithm?.FriendlyName ?? certificate.SignatureAlgorithm?.Value);
-        Line("指纹 (SHA1)", certificate.Thumbprint);
-        try { Line("指纹 (SHA256)", Convert.ToHexString(SHA256.HashData(certificate.RawData))); } catch { }
-        Line("主题", X500Name.Format(certificate.Subject));
-        Line("颁发者", X500Name.Format(certificate.Issuer));
-        try { Line("友好名称", certificate.FriendlyName); } catch { }
+        sb.AppendLine(Loc.Get("Cert_Report_Basic"));
+        Line(Loc.Get("Cert_Row_Version"), "V" + certificate.Version);
+        Line(Loc.Get("Cert_Row_Serial"), certificate.SerialNumber);
+        Line(Loc.Get("Cert_Row_SignatureAlgorithm"), certificate.SignatureAlgorithm?.FriendlyName ?? certificate.SignatureAlgorithm?.Value);
+        Line(Loc.Get("Cert_Row_ThumbprintSha1"), certificate.Thumbprint);
+        try { Line(Loc.Get("Cert_Row_ThumbprintSha256"), Convert.ToHexString(SHA256.HashData(certificate.RawData))); } catch { }
+        Line(Loc.Get("Cert_Row_Subject"), X500Name.Format(certificate.Subject));
+        Line(Loc.Get("Cert_Row_Issuer"), X500Name.Format(certificate.Issuer));
+        try { Line(Loc.Get("Cert_Row_FriendlyName"), certificate.FriendlyName); } catch { }
         sb.AppendLine();
-        sb.AppendLine("=== 有效期 ===");
-        Line("生效时间", certificate.NotBefore.ToString("yyyy-MM-dd HH:mm:ss"));
-        Line("过期时间", certificate.NotAfter.ToString("yyyy-MM-dd HH:mm:ss"));
-        Line("状态", GetValidityText(certificate));
+        sb.AppendLine(Loc.Get("Cert_Report_Validity"));
+        Line(Loc.Get("Cert_Row_NotBefore"), certificate.NotBefore.ToString("yyyy-MM-dd HH:mm:ss"));
+        Line(Loc.Get("Cert_Row_NotAfter"), certificate.NotAfter.ToString("yyyy-MM-dd HH:mm:ss"));
+        Line(Loc.Get("Cert_Row_Status"), GetValidityText(certificate));
         sb.AppendLine();
-        sb.AppendLine("=== 公钥 ===");
-        Line("算法", certificate.PublicKey?.Oid?.FriendlyName ?? certificate.PublicKey?.Oid?.Value);
+        sb.AppendLine(Loc.Get("Cert_Report_PublicKey"));
+        Line(Loc.Get("Cert_Row_Algorithm"), certificate.PublicKey?.Oid?.FriendlyName ?? certificate.PublicKey?.Oid?.Value);
         int keySize = GetKeySize(certificate);
         if (keySize > 0)
         {
-            Line("密钥长度", keySize + " bit");
+            Line(Loc.Get("Cert_Row_KeySize"), keySize + " bit");
         }
-        try { Line("公钥 (Base64)", Convert.ToBase64String(certificate.PublicKey?.EncodedKeyValue.RawData ?? Array.Empty<byte>())); } catch { }
-        Line("私钥", certificate.HasPrivateKey ? "存在" : "不存在");
+        try { Line(Loc.Get("Cert_Row_PublicKeyBase64"), Convert.ToBase64String(certificate.PublicKey?.EncodedKeyValue.RawData ?? Array.Empty<byte>())); } catch { }
+        Line(Loc.Get("Cert_Row_PrivateKey"), Loc.Get(certificate.HasPrivateKey ? "Cert_Value_Present" : "Cert_Value_Absent"));
         sb.AppendLine();
-        sb.AppendLine("=== 扩展 ===");
-        Line("CA 证书", IsCa(certificate) ? "是" : "否");
+        sb.AppendLine(Loc.Get("Cert_Report_Extensions"));
+        Line(Loc.Get("Cert_Row_IsCa"), Loc.Get(IsCa(certificate) ? "Common_Yes" : "Common_No"));
         X509BasicConstraintsExtension? bc = certificate.Extensions.OfType<X509BasicConstraintsExtension>().FirstOrDefault();
-        Line("路径长度约束", bc is not null && bc.HasPathLengthConstraint ? bc.PathLengthConstraint.ToString() : "无");
-        Line("密钥用法", GetKeyUsageText(certificate));
+        Line(Loc.Get("Cert_Row_PathLength"), bc is not null && bc.HasPathLengthConstraint ? bc.PathLengthConstraint.ToString() : Loc.Get("Common_None"));
+        Line(Loc.Get("Cert_Row_KeyUsage"), GetKeyUsageText(certificate));
         IReadOnlyList<string> ekus = GetEnhancedKeyUsages(certificate);
-        Line("增强密钥用法", ekus.Count == 0 ? "无" : string.Join("; ", ekus));
+        Line(Loc.Get("Cert_Row_Eku"), ekus.Count == 0 ? Loc.Get("Common_None") : string.Join("; ", ekus));
         IReadOnlyList<string> sans = GetSubjectAlternativeNames(certificate);
-        Line("使用者可选名称", sans.Count == 0 ? "无" : string.Join("; ", sans));
+        Line(Loc.Get("Cert_Row_San"), sans.Count == 0 ? Loc.Get("Common_None") : string.Join("; ", sans));
         Line("SKI", GetExtensionText(certificate, "2.5.29.14"));
         Line("AKI", GetExtensionText(certificate, "2.5.29.35"));
-        Line("CRL 分发点", GetExtensionText(certificate, "2.5.29.31"));
-        Line("颁发机构信息访问", GetExtensionText(certificate, "1.3.6.1.5.5.7.1.1"));
-        Line("证书策略", GetExtensionText(certificate, "2.5.29.32"));
+        Line(Loc.Get("Cert_Row_Crl"), GetExtensionText(certificate, "2.5.29.31"));
+        Line(Loc.Get("Cert_Row_Aia"), GetExtensionText(certificate, "1.3.6.1.5.5.7.1.1"));
+        Line(Loc.Get("Cert_Row_Policies"), GetExtensionText(certificate, "2.5.29.32"));
 
         sb.AppendLine();
-        sb.AppendLine("=== 所有扩展 ===");
+        sb.AppendLine(Loc.Get("Cert_Report_AllExtensions"));
         foreach (X509Extension ext in certificate.Extensions)
         {
             sb.Append("  ").Append(ext.Oid?.Value)
-              .Append(ext.Critical ? " [关键]" : string.Empty)
+              .Append(ext.Critical ? Loc.Get("Cert_Extension_Critical") : string.Empty)
               .Append("  =>  ")
               .AppendLine(DescribeExtension(ext));
         }
@@ -261,10 +273,10 @@ public static class CertificateDetailsBuilder
     public static string GetValidityText(X509Certificate2 certificate)
     {
         DateTime now = DateTime.Now;
-        if (now < certificate.NotBefore) return "尚未生效";
-        if (now > certificate.NotAfter) return "已过期";
+        if (now < certificate.NotBefore) return Loc.Get("Cert_Validity_NotYetValid");
+        if (now > certificate.NotAfter) return Loc.Get("Cert_Validity_Expired");
         TimeSpan remaining = certificate.NotAfter - now;
-        return $"有效 (剩余 {remaining.Days} 天)";
+        return Loc.Format("Cert_Validity_Valid", remaining.Days);
     }
 
     public static int GetKeySize(X509Certificate2 certificate)
@@ -300,7 +312,7 @@ public static class CertificateDetailsBuilder
         X509Extension? ext = certificate.Extensions.FirstOrDefault(e => e.Oid?.Value == oid);
         if (ext is null)
         {
-            return "无";
+            return Loc.Get("Common_None");
         }
         try
         {

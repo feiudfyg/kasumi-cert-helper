@@ -31,32 +31,32 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <TextBlock Grid.Row="0" Grid.Column="0" Text="存储区" Style="{StaticResource ToolbarGroupCaptionStyle}" />
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="{x:Bind T('Stores_Toolbar_StoreGroup')}" Style="{StaticResource ToolbarGroupCaptionStyle}" />
                 <ScrollViewer Grid.Row="0" Grid.Column="1" HorizontalScrollBarVisibility="Auto"
                               HorizontalScrollMode="Auto" VerticalScrollBarVisibility="Disabled">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <Button x:Name="RefreshButton" Click="OnRefreshClick">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <FontIcon Glyph="&#xE72C;" FontSize="14" />
-                                <TextBlock Text="刷新" />
+                                <TextBlock Text="{x:Bind T('Common_Refresh')}" />
                             </StackPanel>
                         </Button>
                         <Button x:Name="ImportButton" Click="OnImportClick">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <FontIcon Glyph="&#xE8B5;" FontSize="14" />
-                                <TextBlock Text="导入证书..." />
+                                <TextBlock Text="{x:Bind T('Stores_ImportCertificate')}" />
                             </StackPanel>
                         </Button>
                         <Button x:Name="ExportButton" Click="OnExportClick">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <FontIcon Glyph="&#xE898;" FontSize="14" />
-                                <TextBlock Text="导出所选..." />
+                                <TextBlock Text="{x:Bind T('Stores_ExportSelected')}" />
                             </StackPanel>
                         </Button>
                         <Button x:Name="DeleteButton" Click="OnDeleteClick">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <FontIcon Glyph="&#xE74D;" FontSize="14" />
-                                <TextBlock Text="删除所选" />
+                                <TextBlock Text="{x:Bind T('Stores_DeleteSelected')}" />
                             </StackPanel>
                         </Button>
                     </StackPanel>
@@ -64,39 +64,39 @@
                 <ProgressRing x:Name="BusyRing" Grid.Row="0" Grid.Column="2" IsActive="False" Width="20" Height="20"
                               VerticalAlignment="Center" />
 
-                <TextBlock Grid.Row="1" Grid.Column="0" Text="剪贴板" Style="{StaticResource ToolbarGroupCaptionStyle}" />
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="{x:Bind T('Stores_Toolbar_ClipboardGroup')}" Style="{StaticResource ToolbarGroupCaptionStyle}" />
                 <ScrollViewer Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" HorizontalScrollBarVisibility="Auto"
                               HorizontalScrollMode="Auto" VerticalScrollBarVisibility="Disabled">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <Button x:Name="CopyButton" Click="OnCopyClick">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <FontIcon Glyph="&#xE8C8;" FontSize="14" />
-                                <TextBlock Text="复制指纹" />
+                                <TextBlock Text="{x:Bind T('Stores_CopyFingerprint')}" />
                             </StackPanel>
                         </Button>
                         <Button x:Name="CopyDetailsButton" Click="OnCopyDetailsClick">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <FontIcon Glyph="&#xE8C8;" FontSize="14" />
-                                <TextBlock Text="复制详细信息" />
+                                <TextBlock Text="{x:Bind T('Stores_CopyDetails')}" />
                             </StackPanel>
                         </Button>
                     </StackPanel>
                 </ScrollViewer>
 
-                <TextBlock Grid.Row="2" Grid.Column="0" Text="工具" Style="{StaticResource ToolbarGroupCaptionStyle}" />
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="{x:Bind T('Stores_Toolbar_ToolsGroup')}" Style="{StaticResource ToolbarGroupCaptionStyle}" />
                 <ScrollViewer Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" HorizontalScrollBarVisibility="Auto"
                               HorizontalScrollMode="Auto" VerticalScrollBarVisibility="Disabled">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <Button x:Name="CertMgrButton" Click="OnOpenCertMgrClick">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <FontIcon Glyph="&#xE8A5;" FontSize="14" />
-                                <TextBlock Text="打开 certmgr.msc" />
+                                <TextBlock Text="{x:Bind T('Stores_OpenCertMgr')}" />
                             </StackPanel>
                         </Button>
                         <Button x:Name="ElevateButton" Click="OnElevateClick">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <FontIcon Glyph="&#xE72E;" FontSize="14" />
-                                <TextBlock Text="以管理员身份重启" />
+                                <TextBlock Text="{x:Bind T('Common_RestartElevated')}" />
                             </StackPanel>
                         </Button>
                     </StackPanel>
@@ -114,7 +114,7 @@
                 <ColumnDefinition Width="*" MinWidth="300" />
             </Grid.ColumnDefinitions>
 
-            <!-- 存储区 -->
+            <!-- Store tree -->
             <Grid Grid.Column="0" Padding="12">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -123,17 +123,17 @@
                 </Grid.RowDefinitions>
 
                 <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8">
-                    <TextBlock Text="证书存储区" Style="{StaticResource PaneTitleStyle}" />
+                    <TextBlock Text="{x:Bind T('Stores_PaneTitle')}" Style="{StaticResource PaneTitleStyle}" />
                     <TextBlock x:Name="StoreCountText" VerticalAlignment="Center" FontSize="12"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                 </StackPanel>
 
                 <TextBox x:Name="StoreSearchBox" Grid.Row="1" Margin="0,8,0,8"
-                         PlaceholderText="筛选存储区名称" TextChanged="OnStoreSearchChanged" />
+                         PlaceholderText="{x:Bind T('Stores_FilterStores')}" TextChanged="OnStoreSearchChanged" />
 
                 <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Padding="0,0,8,0">
                     <StackPanel Spacing="4">
-                        <Expander x:Name="UserStoreExpander" Header="当前用户" IsExpanded="True"
+                        <Expander x:Name="UserStoreExpander" Header="{x:Bind T('Store_Location_CurrentUser')}" IsExpanded="True"
                                   HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
                             <ListView x:Name="UserStoreList" SelectionMode="Single"
                                       ItemContainerStyle="{StaticResource CompactRowItemStyle}"
@@ -157,7 +157,7 @@
                             </ListView>
                         </Expander>
 
-                        <Expander x:Name="MachineStoreExpander" Header="本地计算机" IsExpanded="True"
+                        <Expander x:Name="MachineStoreExpander" Header="{x:Bind T('Store_Location_LocalMachine')}" IsExpanded="True"
                                   HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
                             <ListView x:Name="MachineStoreList" SelectionMode="Single"
                                       ItemContainerStyle="{StaticResource CompactRowItemStyle}"
@@ -190,7 +190,7 @@
                         Background="{ThemeResource CardStrokeColorDefaultBrush}" />
             </Border>
 
-            <!-- 证书列表 + 详细信息 -->
+            <!-- Certificate list and details -->
             <Grid x:Name="MainGrid" Grid.Column="2">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -207,12 +207,12 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <TextBlock x:Name="StoreTitleText" Grid.Column="0" Style="{StaticResource PaneTitleStyle}"
-                               Text="当前用户 \ 个人" />
+                               Text="{x:Bind T('Stores_SelectedStorePlaceholder')}" />
                     <Button x:Name="DetailsToggleButton" Grid.Column="1" Click="OnToggleDetailsClick"
                             Padding="8,3" MinWidth="0" VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <FontIcon x:Name="DetailsToggleIcon" Glyph="&#xE70D;" FontSize="12" />
-                            <TextBlock x:Name="DetailsToggleText" Text="收起详情" FontSize="12" />
+                            <TextBlock x:Name="DetailsToggleText" Text="{x:Bind T('Stores_HideDetails')}" FontSize="12" />
                         </StackPanel>
                     </Button>
                 </Grid>
@@ -222,7 +222,7 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <TextBox x:Name="SearchBox" PlaceholderText="搜索使用者 / 颁发者 / 指纹"
+                    <TextBox x:Name="SearchBox" PlaceholderText="{x:Bind T('Stores_SearchPlaceholder')}"
                              TextChanged="OnSearchTextChanged" />
                     <TextBlock x:Name="CertificateCountText" Grid.Column="1" VerticalAlignment="Center" FontSize="12"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
@@ -238,19 +238,19 @@
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
-                    <TextBlock x:Name="CertHeaderSubject" Grid.Column="0" Text="使用者" Style="{StaticResource TableHeaderTextStyle}" />
-                    <TextBlock x:Name="CertHeaderIssuer" Grid.Column="1" Text="颁发者" Style="{StaticResource TableHeaderTextStyle}" />
-                    <TextBlock x:Name="CertHeaderNotAfter" Grid.Column="2" Text="到期时间" Style="{StaticResource TableHeaderTextStyle}" />
-                    <TextBlock x:Name="CertHeaderStatus" Grid.Column="3" Text="状态" Style="{StaticResource TableHeaderTextStyle}" />
+                    <TextBlock x:Name="CertHeaderSubject" Grid.Column="0" Text="{x:Bind T('Cert_Row_Subject')}" Style="{StaticResource TableHeaderTextStyle}" />
+                    <TextBlock x:Name="CertHeaderIssuer" Grid.Column="1" Text="{x:Bind T('Cert_Row_Issuer')}" Style="{StaticResource TableHeaderTextStyle}" />
+                    <TextBlock x:Name="CertHeaderNotAfter" Grid.Column="2" Text="{x:Bind T('Cert_Row_NotAfter')}" Style="{StaticResource TableHeaderTextStyle}" />
+                    <TextBlock x:Name="CertHeaderStatus" Grid.Column="3" Text="{x:Bind T('Cert_Row_Status')}" Style="{StaticResource TableHeaderTextStyle}" />
 
                     <Border Grid.Column="0" Style="{StaticResource ColumnResizerStyle}" Tag="0"
-                            ManipulationDelta="OnColumnResize" ToolTipService.ToolTip="拖动调整列宽" />
+                            ManipulationDelta="OnColumnResize" ToolTipService.ToolTip="{x:Bind T('Common_DragToResizeColumn')}" />
                     <Border Grid.Column="1" Style="{StaticResource ColumnResizerStyle}" Tag="1"
-                            ManipulationDelta="OnColumnResize" ToolTipService.ToolTip="拖动调整列宽" />
+                            ManipulationDelta="OnColumnResize" ToolTipService.ToolTip="{x:Bind T('Common_DragToResizeColumn')}" />
                     <Border Grid.Column="2" Style="{StaticResource ColumnResizerStyle}" Tag="2"
-                            ManipulationDelta="OnColumnResize" ToolTipService.ToolTip="拖动调整列宽" />
+                            ManipulationDelta="OnColumnResize" ToolTipService.ToolTip="{x:Bind T('Common_DragToResizeColumn')}" />
                     <Border Grid.Column="3" Style="{StaticResource ColumnResizerStyle}" Tag="3"
-                            ManipulationDelta="OnColumnResize" ToolTipService.ToolTip="拖动调整列宽" />
+                            ManipulationDelta="OnColumnResize" ToolTipService.ToolTip="{x:Bind T('Common_DragToResizeColumn')}" />
                 </Grid>
 
                 <Grid x:Name="CertListHost" Grid.Row="3" SizeChanged="OnTableSizeChanged">
@@ -292,7 +292,7 @@
                                 HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" MaxWidth="280">
                         <FontIcon Glyph="&#xE8D7;" FontSize="28"
                                   Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                        <TextBlock x:Name="CertEmptyText" Text="此存储区中没有证书" TextWrapping="Wrap"
+                        <TextBlock x:Name="CertEmptyText" Text="{x:Bind T('Stores_EmptyCertificates')}" TextWrapping="Wrap"
                                    TextAlignment="Center"
                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                     </StackPanel>
@@ -318,12 +318,12 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" Spacing="2">
                             <TextBlock x:Name="DetailsHeader" Style="{StaticResource PaneTitleStyle}"
-                                       TextWrapping="Wrap" Text="证书详细信息" />
+                                       TextWrapping="Wrap" Text="{x:Bind T('Stores_DetailsTitle')}" />
                             <TextBlock x:Name="DetailsStatusText" FontSize="12" TextWrapping="Wrap"
                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                         </StackPanel>
                         <Button x:Name="CopyDetailsInlineButton" Grid.Column="1" Click="OnCopyDetailsClick"
-                                ToolTipService.ToolTip="复制详细信息" Padding="8,4" MinWidth="0" VerticalAlignment="Top">
+                                ToolTipService.ToolTip="{x:Bind T('Stores_CopyDetails')}" Padding="8,4" MinWidth="0" VerticalAlignment="Top">
                             <FontIcon Glyph="&#xE8C8;" FontSize="14" />
                         </Button>
                     </Grid>
@@ -337,7 +337,7 @@
                                 VerticalAlignment="Center" Spacing="8" MaxWidth="300" IsHitTestVisible="False">
                         <FontIcon Glyph="&#xE946;" FontSize="28"
                                   Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                        <TextBlock Text="从上方列表中选择一个证书，这里会显示解析后的详细信息。" TextWrapping="Wrap"
+                        <TextBlock Text="{x:Bind T('Stores_DetailsEmptyHint')}" TextWrapping="Wrap"
                                    TextAlignment="Center"
                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                     </StackPanel>

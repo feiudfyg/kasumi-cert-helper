@@ -1,3 +1,4 @@
+using KasumiCertHelper.Core.Localization;
 using KasumiCertHelper.Core.Services;
 
 namespace KasumiCertHelper.Services;
@@ -36,6 +37,18 @@ public static class AppServices
         }
 
         Settings = SettingsService.Load();
+
+        // The language has to be settled before any window or page is created, because XAML text is
+        // resolved while the page is parsed.
+        if (string.IsNullOrWhiteSpace(Settings.Language))
+        {
+            Loc.UseSystemCulture();
+        }
+        else
+        {
+            Loc.SetCulture(Settings.Language);
+        }
+
         Gpg = new GpgService(
             string.IsNullOrWhiteSpace(Settings.GpgExecutablePath) ? GpgService.AutoDetect() : Settings.GpgExecutablePath,
             Settings.GpgHomeDirectory);

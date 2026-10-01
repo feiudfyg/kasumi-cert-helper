@@ -1,4 +1,5 @@
 using System.Security.Cryptography.X509Certificates;
+using KasumiCertHelper.Core.Localization;
 using KasumiCertHelper.Core.Models;
 using KasumiCertHelper.Core.Services;
 using KasumiCertHelper.Services;
@@ -66,18 +67,18 @@ internal static class X509Dialogs
     public static async Task<KeyDialogResult?> ShowKeyAsync(string defaultName, X509KeyOptions? initial = null)
     {
         initial ??= new X509KeyOptions();
-        var nameBox = new TextBox { Header = "名称", Text = defaultName, MinWidth = 380 };
+        var nameBox = new TextBox { Header = Loc.Get("X509Dlg_Name"), Text = defaultName, MinWidth = 380 };
         AutomationProperties.SetAutomationId(nameBox, "KeyName");
         var algorithmBox = new ComboBox
         {
-            Header = "算法",
+            Header = Loc.Get("Gpg_HeaderAlgorithm"),
             ItemsSource = new[] { "RSA", "ECDSA" },
             SelectedIndex = initial.Algorithm == X509KeyAlgorithm.Ecdsa ? 1 : 0,
             MinWidth = 380,
         };
         var sizeBox = new NumberBox
         {
-            Header = "密钥长度 (RSA)",
+            Header = Loc.Get("X509Dlg_RsaKeySize"),
             Minimum = 1024,
             Maximum = 16384,
             Value = initial.KeySize <= 0 ? 4096 : initial.KeySize,
@@ -86,12 +87,12 @@ internal static class X509Dialogs
         };
         var curveBox = new ComboBox
         {
-            Header = "椭圆曲线 (ECDSA)",
+            Header = Loc.Get("X509Dlg_EcdsaCurve"),
             ItemsSource = X509Factory.EcdsaCurves,
             SelectedItem = initial.Curve,
             MinWidth = 380,
         };
-        var commentBox = new TextBox { Header = "备注", MinWidth = 380 };
+        var commentBox = new TextBox { Header = Loc.Get("X509Dlg_Comment"), MinWidth = 380 };
 
         void Update()
         {
@@ -111,10 +112,10 @@ internal static class X509Dialogs
 
         var dialog = new ContentDialog
         {
-            Title = "新建密钥",
+            Title = Loc.Get("X509Dlg_NewKeyTitle"),
             Content = new ScrollViewer { Content = panel, MaxHeight = 520 },
-            PrimaryButtonText = "生成",
-            CloseButtonText = "取消",
+            PrimaryButtonText = Loc.Get("Common_Generate"),
+            CloseButtonText = Loc.Get("Common_Cancel"),
             DefaultButton = ContentDialogButton.Primary,
         };
 
@@ -145,21 +146,21 @@ internal static class X509Dialogs
         IReadOnlyList<X509Item> existingKeys,
         string? preselectKeyId)
     {
-        var nameBox = new TextBox { Header = "名称", Text = defaultName };
+        var nameBox = new TextBox { Header = Loc.Get("X509Dlg_Name"), Text = defaultName };
         AutomationProperties.SetAutomationId(nameBox, "CertName");
-        var cnBox = new TextBox { Header = "通用名称 (CN)", Text = defaultName };
+        var cnBox = new TextBox { Header = Loc.Get("X509Dlg_CommonName"), Text = defaultName };
         AutomationProperties.SetAutomationId(cnBox, "CertCommonName");
-        var oBox = new TextBox { Header = "组织 (O)" };
+        var oBox = new TextBox { Header = Loc.Get("X509Dlg_Organization") };
         AutomationProperties.SetAutomationId(oBox, "CertOrganization");
-        var ouBox = new TextBox { Header = "组织单位 (OU)" };
-        var lBox = new TextBox { Header = "城市 (L)" };
-        var stBox = new TextBox { Header = "省份 (ST)" };
-        var cBox = new TextBox { Header = "国家代码 (C)", PlaceholderText = "例如 CN" };
-        var eBox = new TextBox { Header = "电子邮件 (E)" };
+        var ouBox = new TextBox { Header = Loc.Get("X509Dlg_OrganizationalUnit") };
+        var lBox = new TextBox { Header = Loc.Get("X509Dlg_Locality") };
+        var stBox = new TextBox { Header = Loc.Get("X509Dlg_State") };
+        var cBox = new TextBox { Header = Loc.Get("X509Dlg_CountryCode"), PlaceholderText = Loc.Get("X509Dlg_CountryCodeHint") };
+        var eBox = new TextBox { Header = Loc.Get("X509Dlg_Email") };
 
         var daysBox = new NumberBox
         {
-            Header = "有效期（天）",
+            Header = Loc.Get("X509Dlg_ValidityDays"),
             Minimum = 1,
             Maximum = 36500,
             Value = 365,
@@ -167,18 +168,18 @@ internal static class X509Dialogs
         };
         var hashBox = new ComboBox
         {
-            Header = "签名哈希算法",
+            Header = Loc.Get("X509Dlg_HashAlgorithm"),
             ItemsSource = X509Factory.HashAlgorithms,
             SelectedIndex = 0,
         };
 
-        var newKeyRadio = new RadioButton { Content = "新建密钥", IsChecked = existingKeys.Count == 0 };
+        var newKeyRadio = new RadioButton { Content = Loc.Get("X509Dlg_NewKeyOption"), IsChecked = existingKeys.Count == 0 };
         AutomationProperties.SetAutomationId(newKeyRadio, "CertNewKeyMode");
-        var existingKeyRadio = new RadioButton { Content = "使用数据库中的现有密钥", IsChecked = existingKeys.Count > 0 };
+        var existingKeyRadio = new RadioButton { Content = Loc.Get("X509Dlg_ExistingKeyOption"), IsChecked = existingKeys.Count > 0 };
         AutomationProperties.SetAutomationId(existingKeyRadio, "CertExistingKeyMode");
         var existingKeyBox = new ComboBox
         {
-            Header = "现有密钥",
+            Header = Loc.Get("X509Dlg_ExistingKey"),
             ItemsSource = existingKeys.ToList(),
             DisplayMemberPath = "Name",
             MinWidth = 360,
@@ -191,13 +192,13 @@ internal static class X509Dialogs
 
         var algorithmBox = new ComboBox
         {
-            Header = "新密钥算法",
+            Header = Loc.Get("X509Dlg_NewKeyAlgorithm"),
             ItemsSource = new[] { "RSA", "ECDSA" },
             SelectedIndex = 0,
         };
         var sizeBox = new NumberBox
         {
-            Header = "新密钥长度 (RSA)",
+            Header = Loc.Get("X509Dlg_NewKeySize"),
             Minimum = 1024,
             Maximum = 16384,
             Value = 4096,
@@ -205,15 +206,15 @@ internal static class X509Dialogs
         };
         var curveBox = new ComboBox
         {
-            Header = "椭圆曲线 (ECDSA)",
+            Header = Loc.Get("X509Dlg_EcdsaCurve"),
             ItemsSource = X509Factory.EcdsaCurves,
             SelectedIndex = 0,
             IsEnabled = false,
         };
 
-        var caCheck = new CheckBox { Content = "这是 CA 证书（BasicConstraints: CA=TRUE）", IsChecked = defaultIsCa };
+        var caCheck = new CheckBox { Content = Loc.Get("X509Dlg_IsCa"), IsChecked = defaultIsCa };
         AutomationProperties.SetAutomationId(caCheck, "CertIsCa");
-        var pathLenCheck = new CheckBox { Content = "限制路径长度", IsEnabled = defaultIsCa };
+        var pathLenCheck = new CheckBox { Content = Loc.Get("X509Dlg_LimitPathLength"), IsEnabled = defaultIsCa };
         var pathLenBox = new NumberBox
         {
             Minimum = 0,
@@ -225,45 +226,45 @@ internal static class X509Dialogs
 
         var usageChecks = new List<(X509KeyUsageFlags Flag, CheckBox Box)>
         {
-            (X509KeyUsageFlags.DigitalSignature, new CheckBox { Content = "数字签名" }),
-            (X509KeyUsageFlags.NonRepudiation, new CheckBox { Content = "不可否认性" }),
-            (X509KeyUsageFlags.KeyEncipherment, new CheckBox { Content = "密钥加密" }),
-            (X509KeyUsageFlags.DataEncipherment, new CheckBox { Content = "数据加密" }),
-            (X509KeyUsageFlags.KeyAgreement, new CheckBox { Content = "密钥协商" }),
-            (X509KeyUsageFlags.KeyCertSign, new CheckBox { Content = "证书签名" }),
-            (X509KeyUsageFlags.CrlSign, new CheckBox { Content = "CRL 签名" }),
+            (X509KeyUsageFlags.DigitalSignature, new CheckBox { Content = Loc.Get("Cert_KeyUsage_DigitalSignature") }),
+            (X509KeyUsageFlags.NonRepudiation, new CheckBox { Content = Loc.Get("Cert_KeyUsage_NonRepudiation") }),
+            (X509KeyUsageFlags.KeyEncipherment, new CheckBox { Content = Loc.Get("Cert_KeyUsage_KeyEncipherment") }),
+            (X509KeyUsageFlags.DataEncipherment, new CheckBox { Content = Loc.Get("Cert_KeyUsage_DataEncipherment") }),
+            (X509KeyUsageFlags.KeyAgreement, new CheckBox { Content = Loc.Get("Cert_KeyUsage_KeyAgreement") }),
+            (X509KeyUsageFlags.KeyCertSign, new CheckBox { Content = Loc.Get("Cert_KeyUsage_KeyCertSign") }),
+            (X509KeyUsageFlags.CrlSign, new CheckBox { Content = Loc.Get("Cert_KeyUsage_CrlSign") }),
         };
         usageChecks[0].Box.IsChecked = true;
         usageChecks[2].Box.IsChecked = true;
 
         var ekuChecks = X509Factory.ExtendedKeyUsageChoices
-            .Select(choice => new CheckBox { Content = choice.Name, Tag = choice.Oid })
+            .Select(choice => new CheckBox { Content = Loc.Get(choice.NameKey), Tag = choice.Oid })
             .ToList();
 
         var sanBox = new TextBox
         {
-            Header = "使用者可选名称 (SAN) — 每行一个，格式如 DNS:example.com / IP:1.2.3.4 / EMAIL:a@b.com / URI:https://x / UPN:user@domain",
+            Header = Loc.Get("X509Dlg_SanHint"),
             AcceptsReturn = true,
             TextWrapping = TextWrapping.Wrap,
             Height = 110,
         };
         var crlBox = new TextBox
         {
-            Header = "CRL 分发点 URL — 每行一个",
+            Header = Loc.Get("X509Dlg_CrlHint"),
             AcceptsReturn = true,
             TextWrapping = TextWrapping.Wrap,
             Height = 70,
         };
         var ocspBox = new TextBox
         {
-            Header = "OCSP / CA 颁发者 URL — 每行一个",
+            Header = Loc.Get("X509Dlg_OcspHint"),
             AcceptsReturn = true,
             TextWrapping = TextWrapping.Wrap,
             Height = 70,
         };
         var policyBox = new TextBox
         {
-            Header = "证书策略 OID — 每行一个，例如 2.23.140.1.2.1",
+            Header = Loc.Get("X509Dlg_PolicyHint"),
             AcceptsReturn = true,
             TextWrapping = TextWrapping.Wrap,
             Height = 70,
@@ -342,22 +343,22 @@ internal static class X509Dialogs
         caPanel.Children.Add(pathLenPanel);
 
         var content = new StackPanel { Spacing = 12, MinWidth = 640 };
-        content.Children.Add(Section("主题 (Subject)", subjectGrid));
-        content.Children.Add(Section("密钥", keyPanel));
-        content.Children.Add(Section("CA 属性", caPanel));
-        content.Children.Add(Section("密钥用法 (Key Usage)", usagePanel));
-        content.Children.Add(Section("增强密钥用法 (Extended Key Usage)", ekuPanel));
-        content.Children.Add(Section("使用者可选名称", sanBox));
-        content.Children.Add(Section("CRL 分发点", crlBox));
-        content.Children.Add(Section("颁发机构信息访问 (OCSP / CA Issuers)", ocspBox));
-        content.Children.Add(Section("证书策略", policyBox));
+        content.Children.Add(Section(Loc.Get("X509Dlg_SectionSubject"), subjectGrid));
+        content.Children.Add(Section(Loc.Get("X509_NewKey"), keyPanel));
+        content.Children.Add(Section(Loc.Get("X509Dlg_SectionCa"), caPanel));
+        content.Children.Add(Section(Loc.Get("X509Dlg_SectionKeyUsage"), usagePanel));
+        content.Children.Add(Section(Loc.Get("X509Dlg_SectionEku"), ekuPanel));
+        content.Children.Add(Section(Loc.Get("Cert_Row_San"), sanBox));
+        content.Children.Add(Section(Loc.Get("Cert_Row_Crl"), crlBox));
+        content.Children.Add(Section(Loc.Get("X509Dlg_SectionAia"), ocspBox));
+        content.Children.Add(Section(Loc.Get("Cert_Row_Policies"), policyBox));
 
         var dialog = new ContentDialog
         {
             Title = title,
             Content = new ScrollViewer { Content = content, MaxHeight = 620 },
-            PrimaryButtonText = "生成",
-            CloseButtonText = "取消",
+            PrimaryButtonText = Loc.Get("Common_Generate"),
+            CloseButtonText = Loc.Get("Common_Cancel"),
             DefaultButton = ContentDialogButton.Primary,
         };
         dialog.Resources["ContentDialogMaxWidth"] = 980.0;
@@ -419,7 +420,7 @@ internal static class X509Dialogs
 
         if (string.IsNullOrWhiteSpace(result.Subject.CommonName))
         {
-            await DialogService.ShowMessageAsync("输入有误", "通用名称 (CN) 不能为空。");
+            await DialogService.ShowMessageAsync(Loc.Get("Common_InvalidInput"), Loc.Get("X509Dlg_CommonNameRequired"));
             return null;
         }
 
@@ -430,20 +431,20 @@ internal static class X509Dialogs
     {
         var formatBox = new ComboBox
         {
-            Header = "导出格式",
+            Header = Loc.Get("X509_ExportFormat"),
             ItemsSource = item.Kind switch
             {
-                X509ItemKind.Certificate => new[] { "PEM 证书 (*.crt)", "DER 证书 (*.cer)", "PKCS#12 证书包 (*.pfx)" },
-                X509ItemKind.Csr => new[] { "PEM 证书请求 (*.csr)", "DER 证书请求 (*.csr)" },
-                _ => new[] { "PEM 私钥 (*.key)", "加密 PEM 私钥 (*.key)" },
+                X509ItemKind.Certificate => new[] { Loc.Get("X509_ExportPemCert"), Loc.Get("X509_ExportDerCert"), Loc.Get("X509_ExportPfx") },
+                X509ItemKind.Csr => new[] { Loc.Get("X509_ExportPemCsr"), Loc.Get("X509_ExportDerCsr") },
+                _ => new[] { Loc.Get("X509_ExportPemKey"), Loc.Get("X509_ExportEncryptedPemKey") },
             },
             SelectedIndex = 0,
             MinWidth = 340,
         };
-        var passwordBox = new PasswordBox { Header = "密码（PKCS#12 / 加密私钥）", MinWidth = 340 };
+        var passwordBox = new PasswordBox { Header = Loc.Get("X509_ExportPassword"), MinWidth = 340 };
         var includeKey = new CheckBox
         {
-            Content = "包含私钥（仅 PKCS#12 且证书含私钥时有效）",
+            Content = Loc.Get("X509_ExportIncludePrivateKey"),
             IsEnabled = item.Kind == X509ItemKind.Certificate && hasPrivateKey,
         };
 
@@ -463,10 +464,10 @@ internal static class X509Dialogs
 
         var dialog = new ContentDialog
         {
-            Title = "导出选项",
+            Title = Loc.Get("X509_ExportOptionsTitle"),
             Content = panel,
-            PrimaryButtonText = "导出",
-            CloseButtonText = "取消",
+            PrimaryButtonText = Loc.Get("Common_Export"),
+            CloseButtonText = Loc.Get("Common_Cancel"),
             DefaultButton = ContentDialogButton.Primary,
         };
 

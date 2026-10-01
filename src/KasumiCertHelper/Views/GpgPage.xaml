@@ -30,32 +30,32 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <TextBlock Grid.Row="0" Grid.Column="0" Text="密钥" Style="{StaticResource ToolbarGroupCaptionStyle}" />
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="{x:Bind T('Gpg_Toolbar_KeyGroup')}" Style="{StaticResource ToolbarGroupCaptionStyle}" />
                 <ScrollViewer Grid.Row="0" Grid.Column="1" HorizontalScrollBarVisibility="Auto"
                               HorizontalScrollMode="Auto" VerticalScrollBarVisibility="Disabled">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <Button x:Name="RefreshButton" Click="OnRefreshClick">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <FontIcon Glyph="&#xE72C;" FontSize="14" />
-                                <TextBlock Text="刷新" />
+                                <TextBlock Text="{x:Bind T('Common_Refresh')}" />
                             </StackPanel>
                         </Button>
                         <Button x:Name="GenerateButton" Click="OnGenerateClick">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <FontIcon Glyph="&#xE710;" FontSize="14" />
-                                <TextBlock Text="生成密钥对" />
+                                <TextBlock Text="{x:Bind T('Gpg_Generate')}" />
                             </StackPanel>
                         </Button>
                         <Button x:Name="ImportButton" Click="OnImportClick">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <FontIcon Glyph="&#xE8B5;" FontSize="14" />
-                                <TextBlock Text="导入密钥" />
+                                <TextBlock Text="{x:Bind T('Gpg_Import')}" />
                             </StackPanel>
                         </Button>
                         <Button x:Name="DeleteButton" Click="OnDeleteClick">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <FontIcon Glyph="&#xE74D;" FontSize="14" />
-                                <TextBlock Text="删除密钥" />
+                                <TextBlock Text="{x:Bind T('Gpg_DeleteKey')}" />
                             </StackPanel>
                         </Button>
                     </StackPanel>
@@ -63,57 +63,57 @@
                 <ProgressRing x:Name="BusyRing" Grid.Row="0" Grid.Column="2" IsActive="False" Width="20" Height="20"
                               VerticalAlignment="Center" />
 
-                <TextBlock Grid.Row="1" Grid.Column="0" Text="导出" Style="{StaticResource ToolbarGroupCaptionStyle}" />
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="{x:Bind T('Gpg_Toolbar_ExportGroup')}" Style="{StaticResource ToolbarGroupCaptionStyle}" />
                 <ScrollViewer Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" HorizontalScrollBarVisibility="Auto"
                               HorizontalScrollMode="Auto" VerticalScrollBarVisibility="Disabled">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <Button x:Name="ExportPublicButton" Click="OnExportPublicClick">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <FontIcon Glyph="&#xE898;" FontSize="14" />
-                                <TextBlock Text="导出公钥" />
+                                <TextBlock Text="{x:Bind T('Gpg_ExportPublic')}" />
                             </StackPanel>
                         </Button>
                         <Button x:Name="ExportSecretButton" Click="OnExportSecretClick">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <FontIcon Glyph="&#xE72E;" FontSize="14" />
-                                <TextBlock Text="导出私钥" />
+                                <TextBlock Text="{x:Bind T('Gpg_ExportSecret')}" />
                             </StackPanel>
                         </Button>
                         <Button x:Name="CopyFingerprintButton" Click="OnCopyFingerprintClick">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <FontIcon Glyph="&#xE8C8;" FontSize="14" />
-                                <TextBlock Text="复制指纹" />
+                                <TextBlock Text="{x:Bind T('Gpg_CopyFingerprint')}" />
                             </StackPanel>
                         </Button>
                     </StackPanel>
                 </ScrollViewer>
 
-                <TextBlock Grid.Row="2" Grid.Column="0" Text="文件" Style="{StaticResource ToolbarGroupCaptionStyle}" />
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="{x:Bind T('Gpg_Toolbar_FileGroup')}" Style="{StaticResource ToolbarGroupCaptionStyle}" />
                 <ScrollViewer Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" HorizontalScrollBarVisibility="Auto"
                               HorizontalScrollMode="Auto" VerticalScrollBarVisibility="Disabled">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <Button x:Name="EncryptButton" Click="OnEncryptClick">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <FontIcon Glyph="&#xE72E;" FontSize="14" />
-                                <TextBlock Text="加密文件" />
+                                <TextBlock Text="{x:Bind T('Gpg_EncryptFile')}" />
                             </StackPanel>
                         </Button>
                         <Button x:Name="DecryptButton" Click="OnDecryptClick">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <FontIcon Glyph="&#xE785;" FontSize="14" />
-                                <TextBlock Text="解密文件" />
+                                <TextBlock Text="{x:Bind T('Gpg_DecryptFile')}" />
                             </StackPanel>
                         </Button>
                         <Button x:Name="SignButton" Click="OnSignClick">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <FontIcon Glyph="&#xE70F;" FontSize="14" />
-                                <TextBlock Text="签名文件" />
+                                <TextBlock Text="{x:Bind T('Gpg_SignFile')}" />
                             </StackPanel>
                         </Button>
                         <Button x:Name="VerifyButton" Click="OnVerifyClick">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <FontIcon Glyph="&#xE8FB;" FontSize="14" />
-                                <TextBlock Text="验证签名" />
+                                <TextBlock Text="{x:Bind T('Gpg_VerifyFile')}" />
                             </StackPanel>
                         </Button>
                     </StackPanel>
@@ -122,10 +122,10 @@
         </Border>
 
         <InfoBar x:Name="GpgInfoBar" Grid.Row="1" IsOpen="False" Severity="Warning"
-                 Title="未找到 GnuPG" Message="未能定位 gpg.exe。可安装 Gpg4win，或在设置中手动指定路径。"
+                 Title="{x:Bind T('Gpg_NotFoundTitle')}" Message="{x:Bind T('Gpg_NotFoundMessage')}"
                  IsClosable="False" Margin="8,4">
             <InfoBar.ActionButton>
-                <Button Content="选择 gpg.exe" Click="OnLocateGpgClick" />
+                <Button Content="{x:Bind T('Gpg_ChooseGpgExe')}" Click="OnLocateGpgClick" />
             </InfoBar.ActionButton>
         </InfoBar>
 
@@ -137,7 +137,7 @@
                 <ColumnDefinition Width="*" MinWidth="260" />
             </Grid.ColumnDefinitions>
 
-            <!-- 密钥列表 -->
+            <!-- Key list -->
             <Grid Grid.Column="0">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -152,18 +152,18 @@
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" Text="OpenPGP 密钥" Style="{StaticResource PaneTitleStyle}" />
+                    <TextBlock Grid.Column="0" Text="{x:Bind T('Gpg_PaneTitle')}" Style="{StaticResource PaneTitleStyle}" />
                     <ComboBox x:Name="FilterBox" Grid.Column="1" MinWidth="120" SelectionChanged="OnFilterChanged">
-                        <ComboBoxItem Content="全部密钥" />
-                        <ComboBoxItem Content="仅含私钥" />
-                        <ComboBoxItem Content="仅公钥" />
+                        <ComboBoxItem Content="{x:Bind T('Gpg_FilterAll')}" />
+                        <ComboBoxItem Content="{x:Bind T('Gpg_FilterSecret')}" />
+                        <ComboBoxItem Content="{x:Bind T('Gpg_FilterPublic')}" />
                     </ComboBox>
                     <TextBlock x:Name="CountText" Grid.Column="2" VerticalAlignment="Center" FontSize="12"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                 </Grid>
 
                 <TextBox x:Name="SearchBox" Grid.Row="1" Margin="12,0,12,8"
-                         PlaceholderText="搜索姓名 / 邮箱 / 指纹" TextChanged="OnSearchTextChanged" />
+                         PlaceholderText="{x:Bind T('Gpg_SearchPlaceholder')}" TextChanged="OnSearchTextChanged" />
 
                 <Grid Grid.Row="2" Padding="12,4,8,4" ColumnSpacing="10" BorderThickness="0,1,0,1"
                       BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
@@ -175,19 +175,19 @@
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
-                    <TextBlock x:Name="KeyHeaderName" Grid.Column="0" Text="姓名 / 邮箱" Style="{StaticResource TableHeaderTextStyle}" />
-                    <TextBlock x:Name="KeyHeaderAlgorithm" Grid.Column="1" Text="算法" Style="{StaticResource TableHeaderTextStyle}" />
-                    <TextBlock x:Name="KeyHeaderExpires" Grid.Column="2" Text="有效期至" Style="{StaticResource TableHeaderTextStyle}" />
-                    <TextBlock x:Name="KeyHeaderSecret" Grid.Column="3" Text="私钥" Style="{StaticResource TableHeaderTextStyle}" />
+                    <TextBlock x:Name="KeyHeaderName" Grid.Column="0" Text="{x:Bind T('Gpg_HeaderName')}" Style="{StaticResource TableHeaderTextStyle}" />
+                    <TextBlock x:Name="KeyHeaderAlgorithm" Grid.Column="1" Text="{x:Bind T('Gpg_HeaderAlgorithm')}" Style="{StaticResource TableHeaderTextStyle}" />
+                    <TextBlock x:Name="KeyHeaderExpires" Grid.Column="2" Text="{x:Bind T('Gpg_HeaderExpires')}" Style="{StaticResource TableHeaderTextStyle}" />
+                    <TextBlock x:Name="KeyHeaderSecret" Grid.Column="3" Text="{x:Bind T('Gpg_HeaderSecret')}" Style="{StaticResource TableHeaderTextStyle}" />
 
                     <Border Grid.Column="0" Style="{StaticResource ColumnResizerStyle}" Tag="0"
-                            ManipulationDelta="OnColumnResize" ToolTipService.ToolTip="拖动调整列宽" />
+                            ManipulationDelta="OnColumnResize" ToolTipService.ToolTip="{x:Bind T('Common_DragToResizeColumn')}" />
                     <Border Grid.Column="1" Style="{StaticResource ColumnResizerStyle}" Tag="1"
-                            ManipulationDelta="OnColumnResize" ToolTipService.ToolTip="拖动调整列宽" />
+                            ManipulationDelta="OnColumnResize" ToolTipService.ToolTip="{x:Bind T('Common_DragToResizeColumn')}" />
                     <Border Grid.Column="2" Style="{StaticResource ColumnResizerStyle}" Tag="2"
-                            ManipulationDelta="OnColumnResize" ToolTipService.ToolTip="拖动调整列宽" />
+                            ManipulationDelta="OnColumnResize" ToolTipService.ToolTip="{x:Bind T('Common_DragToResizeColumn')}" />
                     <Border Grid.Column="3" Style="{StaticResource ColumnResizerStyle}" Tag="3"
-                            ManipulationDelta="OnColumnResize" ToolTipService.ToolTip="拖动调整列宽" />
+                            ManipulationDelta="OnColumnResize" ToolTipService.ToolTip="{x:Bind T('Common_DragToResizeColumn')}" />
                 </Grid>
 
                 <Grid x:Name="KeyListHost" Grid.Row="3" SizeChanged="OnTableSizeChanged">
@@ -232,7 +232,7 @@
                                 HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" MaxWidth="280">
                         <FontIcon Glyph="&#xE192;" FontSize="28"
                                   Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                        <TextBlock x:Name="KeyEmptyText" Text="没有找到密钥" TextWrapping="Wrap"
+                        <TextBlock x:Name="KeyEmptyText" Text="{x:Bind T('Gpg_EmptyKeys')}" TextWrapping="Wrap"
                                    TextAlignment="Center"
                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                     </StackPanel>
@@ -245,7 +245,7 @@
                         Background="{ThemeResource CardStrokeColorDefaultBrush}" />
             </Border>
 
-            <!-- 密钥详细信息 -->
+            <!-- Key details -->
             <Grid Grid.Column="2">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -254,7 +254,7 @@
 
                 <StackPanel Grid.Row="0" Padding="12,12,12,8" Spacing="2">
                     <TextBlock x:Name="DetailTitle" Style="{StaticResource PaneTitleStyle}"
-                               TextWrapping="Wrap" Text="密钥详细信息" />
+                               TextWrapping="Wrap" Text="{x:Bind T('Gpg_DetailsTitle')}" />
                     <TextBlock x:Name="DetailStatusText" FontSize="12" TextWrapping="Wrap"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                 </StackPanel>
@@ -267,7 +267,7 @@
                             VerticalAlignment="Center" Spacing="8" MaxWidth="280" IsHitTestVisible="False">
                     <FontIcon Glyph="&#xE946;" FontSize="28"
                               Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                    <TextBlock Text="从左侧列表中选择一个密钥，这里会显示解析后的详细信息。" TextWrapping="Wrap"
+                    <TextBlock Text="{x:Bind T('Gpg_DetailsEmptyHint')}" TextWrapping="Wrap"
                                TextAlignment="Center"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                 </StackPanel>

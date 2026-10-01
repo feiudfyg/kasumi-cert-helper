@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using KasumiCertHelper.Core.Localization;
 
 namespace KasumiCertHelper.Core.Services;
 
@@ -30,7 +31,7 @@ public static class CertificateKeyIO
             RSA rsa => certificate.CopyWithPrivateKey(rsa),
             ECDsa ecdsa => certificate.CopyWithPrivateKey(ecdsa),
             DSA dsa => certificate.CopyWithPrivateKey(dsa),
-            _ => throw new NotSupportedException("不支持的密钥算法。"),
+            _ => throw new NotSupportedException(Loc.Get("Error_UnsupportedKeyAlgorithm")),
         };
 
     public static string ExportPrivateKeyPem(X509Certificate2 certificate, string? password)
@@ -38,7 +39,7 @@ public static class CertificateKeyIO
         using AsymmetricAlgorithm? key = GetPrivateKey(certificate);
         if (key is null)
         {
-            throw new CryptographicException("证书不包含私钥。");
+            throw new CryptographicException(Loc.Get("Error_CertificateHasNoPrivateKey"));
         }
 
         return string.IsNullOrEmpty(password)
@@ -51,7 +52,7 @@ public static class CertificateKeyIO
         using AsymmetricAlgorithm? key = GetPublicKey(certificate);
         if (key is null)
         {
-            throw new CryptographicException("无法读取公钥。");
+            throw new CryptographicException(Loc.Get("Error_CannotReadPublicKey"));
         }
         return key.ExportSubjectPublicKeyInfoPem();
     }

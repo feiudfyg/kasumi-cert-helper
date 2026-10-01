@@ -7,6 +7,7 @@ using KasumiCertHelper.Core.Models;
 using KasumiCertHelper.Core.Services;
 using KasumiCertHelper.Services;
 using KasumiCertHelper.ViewModels;
+using KasumiCertHelper.Core.Localization;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -17,6 +18,9 @@ namespace KasumiCertHelper.Views;
 
 public sealed partial class X509Page : Page
 {
+    /// <summary>Resolves a resource key for XAML, see <c>{x:Bind T('Key')}</c>.</summary>
+    public string T(string key) => Loc.Get(key);
+
     private const string ColumnsKey = "X509.Columns";
     private const string ListPaneKey = "X509.ListPaneWidth";
 
@@ -79,7 +83,7 @@ public sealed partial class X509Page : Page
     {
         if (AppServices.Database is null)
         {
-            _ = DialogService.ShowMessageAsync("未打开数据库", "请先新建或打开一个证书数据库。");
+            _ = DialogService.ShowMessageAsync(Loc.Get("X509_NoDatabase"), Loc.Get("X509_ErrorOpenDatabaseFirst"));
             return false;
         }
         return true;
@@ -103,10 +107,10 @@ public sealed partial class X509Page : Page
         }
         else
         {
-            DatabaseTitle.Text = "未打开数据库";
+            DatabaseTitle.Text = Loc.Get("X509_NoDatabase");
             DatabaseSubtitle.Text = string.IsNullOrWhiteSpace(AppServices.Settings.LastDatabasePath)
-                ? "请新建或打开一个证书数据库以管理密钥、证书与证书请求。"
-                : "上次使用的数据库：" + AppServices.Settings.LastDatabasePath;
+                ? Loc.Get("X509_NoDatabaseHint")
+                : Loc.Get("Settings_LastDatabasePrefix") + AppServices.Settings.LastDatabasePath;
         }
 
         ApplyItemFilter();
@@ -124,7 +128,7 @@ public sealed partial class X509Page : Page
         if (database is null)
         {
             ItemCountText.Text = string.Empty;
-            ItemEmptyText.Text = "尚未打开数据库。";
+            ItemEmptyText.Text = Loc.Get("X509_NoDatabaseYet");
             ItemEmptyState.Visibility = Visibility.Visible;
             return;
         }
@@ -145,13 +149,13 @@ public sealed partial class X509Page : Page
         }
 
         ItemCountText.Text = _visibleItems.Count == database.Items.Count
-            ? $"{_visibleItems.Count} 个项目"
-            : $"{_visibleItems.Count} / {database.Items.Count} 个项目";
+            ? Loc.Format("X509_ItemCountAll", _visibleItems.Count)
+            : Loc.Format("X509_ItemCountFiltered", _visibleItems.Count, database.Items.Count);
 
         ItemEmptyState.Visibility = _visibleItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         ItemEmptyText.Text = database.Items.Count == 0
-            ? "数据库中没有项目。使用上方工具栏新建密钥、证书或证书请求。"
-            : "没有符合筛选条件的项目。";
+            ? Loc.Get("X509_EmptyItemsText")
+            : Loc.Get("X509_NoMatchingItems");
     }
 
     private void OnItemFilterChanged(object sender, TextChangedEventArgs e) => ApplyItemFilter();
@@ -183,13 +187,13 @@ public sealed partial class X509Page : Page
 
         if (row.Item.Kind == X509ItemKind.Csr)
         {
-            flyout.Items.Add(BuildMenuItem("用 CA 证书签发...", "\uE70F", () => OnSignCsrClick(this, new RoutedEventArgs())));
+            flyout.Items.Add(BuildMenuItem(Loc.Get("X509_MenuSignCsr"), "\uE70F", () => OnSignCsrClick(this, new RoutedEventArgs())));
             flyout.Items.Add(new MenuFlyoutSeparator());
         }
 
-        flyout.Items.Add(BuildMenuItem("复制名称", "\uE8C8", () => CopyToClipboard(row.Item.Name)));
-        flyout.Items.Add(BuildMenuItem("导出...", "\uE898", () => OnExportClick(this, new RoutedEventArgs())));
-        flyout.Items.Add(BuildMenuItem("删除", "\uE74D", () => OnDeleteClick(this, new RoutedEventArgs())));
+        flyout.Items.Add(BuildMenuItem(Loc.Get("X509_MenuCopyName"), "\uE8C8", () => CopyToClipboard(row.Item.Name)));
+        flyout.Items.Add(BuildMenuItem(Loc.Get("X509_MenuExport"), "\uE898", () => OnExportClick(this, new RoutedEventArgs())));
+        flyout.Items.Add(BuildMenuItem(Loc.Get("Common_Delete"), "\uE74D", () => OnDeleteClick(this, new RoutedEventArgs())));
 
         flyout.ShowAt(element, new FlyoutShowOptions { Position = e.GetPosition(element) });
         e.Handled = true;
@@ -217,7 +221,7 @@ public sealed partial class X509Page : Page
     {
         if (item is null)
         {
-            DetailTitle.Text = "详细信息";
+            DetailTitle.Text = Loc.Get("X509_DetailsTitle");
             DetailStatusText.Text = string.Empty;
             DetailPanel.Children.Clear();
             DetailEmptyState.Visibility = Visibility.Visible;
@@ -242,7 +246,7 @@ public sealed partial class X509Page : Page
         }
         catch (Exception ex)
         {
-            DetailStatusText.Text = "无法读取项目详细信息。";
+            DetailStatusText.Text = Loc.Get("X509_DetailUnavailable");
             DetailPanel.Children.Clear();
             DetailPanel.Children.Add(new TextBlock
             {
@@ -259,23 +263,23 @@ public sealed partial class X509Page : Page
         {
             return new List<DetailSection>
             {
-                new("错误", new[] { new DetailItem("Error", "内容", "证书内容无效，无法解析。") }, Expanded: true),
+                new(Loc.Get("X509_Detail_ErrorTitle"), new[] { new DetailItem("Error", Loc.Get("X509_Detail_Content"), Loc.Get("X509_Detail_CertificateInvalid")) }, Expanded: true),
             };
         }
 
         var sections = DetailPresenter.ForCertificate(CertificateSummaryBuilder.Build(certificate)).ToList();
-        sections.Add(new DetailSection("PEM 内容", new[]
+        sections.Add(new DetailSection(Loc.Get("X509_Detail_PemSection"), new[]
         {
-            new DetailItem("CertificatePem", "证书 (PEM)", item.CertificatePem ?? string.Empty, Monospace: true),
+            new DetailItem("CertificatePem", Loc.Get("X509_Detail_CertificatePem"), item.CertificatePem ?? string.Empty, Monospace: true),
         }));
 
         if (item.NotAfter is not null)
         {
-            sections.Add(new DetailSection("数据库记录", new[]
+            sections.Add(new DetailSection(Loc.Get("X509_Detail_DatabaseRecord"), new[]
             {
-                new DetailItem("Created", "创建时间", item.CreatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")),
-                new DetailItem("Comment", "备注", item.Comment),
-                new DetailItem("Id", "内部 ID", item.Id, Monospace: true),
+                new DetailItem("Created", Loc.Get("X509_Detail_Created"), item.CreatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")),
+                new DetailItem("Comment", Loc.Get("X509Dlg_Comment"), item.Comment),
+                new DetailItem("Id", Loc.Get("X509_Detail_InternalId"), item.Id, Monospace: true),
             }));
         }
 
@@ -288,13 +292,13 @@ public sealed partial class X509Page : Page
 
         var basic = new List<DetailItem>
         {
-            new("Name", "名称", item.Name),
-            new("Subject", "主题", X500Name.Format(item.Subject ?? string.Empty)),
-            new("SubjectCn", "常用名 (CN)", X500Name.GetCommonName(item.Subject ?? string.Empty)),
-            new("Hash", "摘要算法", request?.HashAlgorithm.Name ?? string.Empty),
-            new("PublicKey", "公钥算法", request?.PublicKey.Oid.FriendlyName ?? request?.PublicKey.Oid.Value ?? string.Empty),
-            new("Created", "创建时间", item.CreatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")),
-            new("Comment", "备注", item.Comment),
+            new("Name", Loc.Get("X509Dlg_Name"), item.Name),
+            new("Subject", Loc.Get("Cert_Row_Subject"), X500Name.Format(item.Subject ?? string.Empty)),
+            new("SubjectCn", Loc.Get("Cert_Row_SubjectCn"), X500Name.GetCommonName(item.Subject ?? string.Empty)),
+            new("Hash", Loc.Get("Gpg_Row_HashAlgorithm"), request?.HashAlgorithm.Name ?? string.Empty),
+            new("PublicKey", Loc.Get("Gpg_Row_PublicKeyAlgorithm"), request?.PublicKey.Oid.FriendlyName ?? request?.PublicKey.Oid.Value ?? string.Empty),
+            new("Created", Loc.Get("X509_Detail_Created"), item.CreatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")),
+            new("Comment", Loc.Get("X509Dlg_Comment"), item.Comment),
         };
 
         var extensions = new List<DetailItem>();
@@ -305,7 +309,7 @@ public sealed partial class X509Page : Page
             {
                 extensions.Add(new DetailItem(
                     "CsrExt" + index++,
-                    extension.Oid?.FriendlyName ?? extension.Oid?.Value ?? "扩展",
+                    extension.Oid?.FriendlyName ?? extension.Oid?.Value ?? Loc.Get("Detail_Section_Extensions"),
                     CertificateDetailsBuilder.DescribeExtensionForDisplay(extension),
                     Monospace: true));
             }
@@ -313,9 +317,9 @@ public sealed partial class X509Page : Page
 
         return new List<DetailSection>
         {
-            new("证书请求 (PKCS#10)", basic, Expanded: true),
-            new("请求中的扩展", extensions),
-            new("PEM 内容", new[] { new DetailItem("CsrPem", "证书请求 (PEM)", item.CsrPem ?? string.Empty, Monospace: true) }),
+            new(Loc.Get("X509_Detail_CsrSection"), basic, Expanded: true),
+            new(Loc.Get("X509_Detail_CsrExtensions"), extensions),
+            new(Loc.Get("X509_Detail_PemSection"), new[] { new DetailItem("CsrPem", Loc.Get("X509_Detail_CsrPem"), item.CsrPem ?? string.Empty, Monospace: true) }),
         };
     }
 
@@ -333,21 +337,21 @@ public sealed partial class X509Page : Page
 
         var basic = new List<DetailItem>
         {
-            new("Name", "名称", item.Name),
-            new("Algorithm", "算法", item.KeyAlgorithm ?? string.Empty),
-            new("KeySize", "密钥长度", item.KeySize is null ? string.Empty : item.KeySize + " bit"),
-            new("Storage", "存储状态", item.HasPrivateKey ? "已加密存储（PKCS#8，PBES2/AES-256，由数据库密码保护）" : "未存储"),
-            new("Created", "创建时间", item.CreatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")),
-            new("UsedBy", "被以下项目使用", usedBy),
-            new("Comment", "备注", item.Comment),
+            new("Name", Loc.Get("X509Dlg_Name"), item.Name),
+            new("Algorithm", Loc.Get("Gpg_HeaderAlgorithm"), item.KeyAlgorithm ?? string.Empty),
+            new("KeySize", Loc.Get("Cert_Row_KeySize"), item.KeySize is null ? string.Empty : item.KeySize + " bit"),
+            new("Storage", "Storage", item.HasPrivateKey ? Loc.Get("X509_Detail_StorageEncrypted") : Loc.Get("X509_Detail_StorageNone")),
+            new("Created", Loc.Get("X509_Detail_Created"), item.CreatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")),
+            new("UsedBy", Loc.Get("X509_Detail_UsedBy"), usedBy),
+            new("Comment", Loc.Get("X509Dlg_Comment"), item.Comment),
         };
 
         return new List<DetailSection>
         {
-            new("私钥", basic, Expanded: true),
-            new("公钥 (SubjectPublicKeyInfo)", new[]
+            new(Loc.Get("X509_Kind_PrivateKey"), basic, Expanded: true),
+            new(Loc.Get("X509_Detail_PublicKeySection"), new[]
             {
-                new DetailItem("KeyPem", "公钥 (PEM)", BuildKeyPem(item, database), Monospace: true),
+                new DetailItem("KeyPem", Loc.Get("X509_Detail_PublicKeyPem"), BuildKeyPem(item, database), Monospace: true),
             }),
         };
     }
@@ -362,13 +366,13 @@ public sealed partial class X509Page : Page
         try
         {
             using AsymmetricAlgorithm key = database.LoadKey(item);
-            return "----- 公钥 (SubjectPublicKeyInfo) -----" + Environment.NewLine +
+            return Loc.Get("X509_Detail_PublicKeyBanner") + Environment.NewLine +
                    key.ExportSubjectPublicKeyInfoPem() + Environment.NewLine +
-                   "----- 私钥以加密形式存储在数据库中（使用数据库密码保护）-----";
+                   Loc.Get("X509_Detail_PrivateKeyBanner");
         }
         catch (Exception ex)
         {
-            return "无法读取私钥：" + ex.Message + Environment.NewLine + Environment.NewLine + (item.EncryptedKeyPem ?? string.Empty);
+            return Loc.Get("X509_Detail_CannotReadPrivateKeyPrefix") + ex.Message + Environment.NewLine + Environment.NewLine + (item.EncryptedKeyPem ?? string.Empty);
         }
     }
 
@@ -389,7 +393,7 @@ public sealed partial class X509Page : Page
         }
         catch (Exception ex)
         {
-            await DialogService.ShowErrorAsync("创建数据库失败", ex);
+            await DialogService.ShowErrorAsync(Loc.Get("X509_ErrorCreateDatabase"), ex);
         }
     }
 
@@ -406,7 +410,7 @@ public sealed partial class X509Page : Page
             X509Database database = X509Database.Open(input.Value.Path, input.Value.Password);
             if (!database.ValidatePassword(input.Value.Password))
             {
-                await DialogService.ShowMessageAsync("密码错误", "数据库密码不正确，无法解密私钥。");
+                await DialogService.ShowMessageAsync(Loc.Get("Common_WrongPassword"), Loc.Get("X509_ErrorWrongPassword"));
                 return;
             }
 
@@ -416,7 +420,7 @@ public sealed partial class X509Page : Page
         }
         catch (Exception ex)
         {
-            await DialogService.ShowErrorAsync("打开数据库失败", ex);
+            await DialogService.ShowErrorAsync(Loc.Get("X509_ErrorOpenDatabase"), ex);
         }
     }
 
@@ -442,7 +446,7 @@ public sealed partial class X509Page : Page
         }
         catch (Exception ex)
         {
-            await DialogService.ShowErrorAsync("生成密钥失败", ex);
+            await DialogService.ShowErrorAsync(Loc.Get("X509_ErrorGenerateKey"), ex);
         }
     }
 
@@ -462,7 +466,7 @@ public sealed partial class X509Page : Page
         X509Database database = AppServices.Database!;
         List<X509Item> keys = database.Items.Where(i => i.Kind == X509ItemKind.PrivateKey).ToList();
 
-        string title = asCsr ? "新建证书请求 (CSR)" : isCa ? "新建 CA 证书" : "新建自签名证书";
+        string title = Loc.Get(asCsr ? "X509_TitleNewCsr" : isCa ? "X509_TitleNewCa" : "X509_TitleNewSelfSigned");
         string defaultName = isCa ? "Kasumi Root CA" : "server.example.com";
 
         CertificateDialogResult? input = await X509Dialogs.ShowCertificateAsync(title, defaultName, isCa, keys, null);
@@ -484,7 +488,7 @@ public sealed partial class X509Page : Page
             else
             {
                 key = X509Factory.CreateKey(input.NewKey!);
-                keyItem = database.AddKey(input.Name + " - 密钥", key, "由向导生成");
+                keyItem = database.AddKey(input.Name + Loc.Get("X509_KeyNameSuffix"), key, Loc.Get("X509_CommentGeneratedByWizard"));
             }
 
             using (key)
@@ -506,7 +510,7 @@ public sealed partial class X509Page : Page
         }
         catch (Exception ex)
         {
-            await DialogService.ShowErrorAsync("生成失败", ex);
+            await DialogService.ShowErrorAsync(Loc.Get("X509_ErrorGenerate"), ex);
         }
     }
 
@@ -540,24 +544,24 @@ public sealed partial class X509Page : Page
 
         if (csrs.Count == 0)
         {
-            await DialogService.ShowMessageAsync("用 CA 签发", "数据库中没有证书请求 (CSR)。请先创建一个证书请求。");
+            await DialogService.ShowMessageAsync(Loc.Get("X509_SignCsr"), Loc.Get("X509_ErrorNoCsr"));
             return;
         }
         if (cas.Count == 0)
         {
-            await DialogService.ShowMessageAsync("用 CA 签发", "数据库中没有 CA 证书。请先创建一个 CA 证书。");
+            await DialogService.ShowMessageAsync(Loc.Get("X509_SignCsr"), Loc.Get("X509_ErrorNoCa"));
             return;
         }
 
-        var csrBox = new ComboBox { Header = "证书请求 (CSR)", ItemsSource = csrs, DisplayMemberPath = "Name", MinWidth = 380 };
+        var csrBox = new ComboBox { Header = Loc.Get("X509_NewCsr"), ItemsSource = csrs, DisplayMemberPath = "Name", MinWidth = 380 };
         csrBox.SelectedItem = ItemList.SelectedItem is X509Row { Item.Kind: X509ItemKind.Csr } selected ? selected.Item : csrs[0];
 
-        var caBox = new ComboBox { Header = "颁发者 CA 证书", ItemsSource = cas, DisplayMemberPath = "Name", MinWidth = 380 };
+        var caBox = new ComboBox { Header = Loc.Get("X509_SignIssuerCa"), ItemsSource = cas, DisplayMemberPath = "Name", MinWidth = 380 };
         caBox.SelectedItem = cas[0];
 
         var daysBox = new NumberBox
         {
-            Header = "有效期（天）",
+            Header = Loc.Get("X509Dlg_ValidityDays"),
             Minimum = 1,
             Maximum = 36500,
             Value = 365,
@@ -582,14 +586,14 @@ public sealed partial class X509Page : Page
                 ? 365
                 : Math.Max(1, (int)(ca.NotAfter.Value - DateTime.Now).TotalDays);
             daysBox.Value = Math.Min(remainingDays, 365);
-            caHint.Text = $"该 CA 证书有效期至 {ca.NotAfter:yyyy-MM-dd}（剩余 {remainingDays} 天）。签发的证书有效期不会超过该日期。";
+            caHint.Text = Loc.Format("X509_SignCaHint", ca.NotAfter?.ToString("yyyy-MM-dd") ?? string.Empty, remainingDays);
         }
 
         caBox.SelectionChanged += (_, _) => UpdateCaHint();
         UpdateCaHint();
-        var hashBox = new ComboBox { Header = "签名哈希算法", ItemsSource = X509Factory.HashAlgorithms, SelectedIndex = 0, MinWidth = 380 };
-        var caCheck = new CheckBox { Content = "将签发的证书标记为 CA 证书" };
-        var pathLenCheck = new CheckBox { Content = "限制路径长度", IsEnabled = false };
+        var hashBox = new ComboBox { Header = Loc.Get("X509Dlg_HashAlgorithm"), ItemsSource = X509Factory.HashAlgorithms, SelectedIndex = 0, MinWidth = 380 };
+        var caCheck = new CheckBox { Content = Loc.Get("X509_SignMarkAsCa") };
+        var pathLenCheck = new CheckBox { Content = Loc.Get("X509Dlg_LimitPathLength"), IsEnabled = false };
         var pathLenBox = new NumberBox { Minimum = 0, Maximum = 32, Value = 0, SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline, IsEnabled = false };
         caCheck.Checked += (_, _) => { pathLenCheck.IsEnabled = true; };
         caCheck.Unchecked += (_, _) => { pathLenCheck.IsEnabled = false; pathLenCheck.IsChecked = false; pathLenBox.IsEnabled = false; };
@@ -603,7 +607,7 @@ public sealed partial class X509Page : Page
         var panel = new StackPanel { Spacing = 10, MinWidth = 420 };
         panel.Children.Add(new TextBlock
         {
-            Text = "将使用所选 CA 证书的私钥对 CSR 进行签名。CSR 中未在此处重写的扩展（例如使用者可选名称）会被保留。",
+            Text = Loc.Get("X509_SignHint"),
             TextWrapping = TextWrapping.Wrap,
         });
         panel.Children.Add(csrBox);
@@ -616,10 +620,10 @@ public sealed partial class X509Page : Page
 
         var dialog = new ContentDialog
         {
-            Title = "用 CA 证书签发",
+            Title = Loc.Get("X509_SignDialogTitle"),
             Content = new ScrollViewer { Content = panel, MaxHeight = 520 },
-            PrimaryButtonText = "签发",
-            CloseButtonText = "取消",
+            PrimaryButtonText = Loc.Get("X509_Sign"),
+            CloseButtonText = Loc.Get("Common_Cancel"),
             DefaultButton = ContentDialogButton.Primary,
         };
 
@@ -638,14 +642,14 @@ public sealed partial class X509Page : Page
             CertificateRequest? request = database.GetCsrRequest(csrItem);
             if (request is null)
             {
-                await DialogService.ShowMessageAsync("签发失败", "CSR 内容无效。");
+                await DialogService.ShowMessageAsync(Loc.Get("X509_ErrorSign"), Loc.Get("X509_ErrorInvalidCsr"));
                 return;
             }
 
             X509Certificate2? caCertificate = database.GetCertificateWithKey(caItem);
             if (caCertificate is null || !caCertificate.HasPrivateKey)
             {
-                await DialogService.ShowMessageAsync("签发失败", "CA 证书不包含可用的私钥。");
+                await DialogService.ShowMessageAsync(Loc.Get("X509_ErrorSign"), Loc.Get("X509_ErrorCaNoPrivateKey"));
                 return;
             }
 
@@ -668,12 +672,12 @@ public sealed partial class X509Page : Page
                 options);
 
             string name = X500Name.GetCommonName(signed.Subject);
-            database.AddCertificate(name, signed, csrItem.KeyId, "由 " + caItem.Name + " 签发");
+            database.AddCertificate(name, signed, csrItem.KeyId, Loc.Format("X509_CommentSignedBy", caItem.Name));
             RefreshItems();
         }
         catch (Exception ex)
         {
-            await DialogService.ShowErrorAsync("签发失败", ex);
+            await DialogService.ShowErrorAsync(Loc.Get("X509_ErrorSign"), ex);
         }
     }
 
@@ -687,7 +691,7 @@ public sealed partial class X509Page : Page
         try
         {
             IReadOnlyList<string> paths = await FilePickerHelper.PickOpenFilesAsync(
-                "导入",
+                Loc.Get("Common_Import"),
                 ".pem", ".crt", ".cer", ".der", ".key", ".csr", ".pfx", ".p12", ".txt", ".asc");
             if (paths.Count == 0)
             {
@@ -711,16 +715,16 @@ public sealed partial class X509Page : Page
 
             RefreshItems();
 
-            string message = $"已导入 {imported} 个项目。";
+            string message = Loc.Format("X509_ImportedItems", imported);
             if (errors.Count > 0)
             {
-                message += Environment.NewLine + Environment.NewLine + "以下文件导入失败：" + Environment.NewLine + string.Join(Environment.NewLine, errors);
+                message += Environment.NewLine + Environment.NewLine + Loc.Get("X509_ImportFailedFiles") + Environment.NewLine + string.Join(Environment.NewLine, errors);
             }
-            await DialogService.ShowMessageAsync("导入完成", message);
+            await DialogService.ShowMessageAsync(Loc.Get("X509_ImportDoneTitle"), message);
         }
         catch (Exception ex)
         {
-            await DialogService.ShowErrorAsync("导入失败", ex);
+            await DialogService.ShowErrorAsync(Loc.Get("Stores_ImportFailed"), ex);
         }
     }
 
@@ -738,22 +742,22 @@ public sealed partial class X509Page : Page
             if (text.Contains("PRIVATE KEY", StringComparison.Ordinal))
             {
                 string? password = text.Contains("ENCRYPTED PRIVATE KEY", StringComparison.Ordinal)
-                    ? await DialogService.ShowPasswordAsync("私钥密码", "私钥已加密，请输入密码：")
+                    ? await DialogService.ShowPasswordAsync(Loc.Get("X509_PrivateKeyPassword"), Loc.Get("X509_EnterPrivateKeyPassword"))
                     : null;
-                database.ImportKey(name, text, password, "从 " + Path.GetFileName(path) + " 导入");
+                database.ImportKey(name, text, password, Loc.Format("X509_CommentImportedFrom", Path.GetFileName(path)));
                 count++;
             }
 
             if (text.Contains("CERTIFICATE REQUEST", StringComparison.Ordinal))
             {
-                database.ImportCsr(name, text, "从 " + Path.GetFileName(path) + " 导入");
+                database.ImportCsr(name, text, Loc.Format("X509_CommentImportedFrom", Path.GetFileName(path)));
                 count++;
             }
 
             if (text.Contains("BEGIN CERTIFICATE", StringComparison.Ordinal))
             {
                 string? keyPem = text.Contains("PRIVATE KEY", StringComparison.Ordinal) ? text : null;
-                database.ImportCertificate(name, text, keyPem, "从 " + Path.GetFileName(path) + " 导入");
+                database.ImportCertificate(name, text, keyPem, Loc.Format("X509_CommentImportedFrom", Path.GetFileName(path)));
                 count++;
             }
 
@@ -773,7 +777,7 @@ public sealed partial class X509Page : Page
                 }
                 catch (CryptographicException)
                 {
-                    password = await DialogService.ShowPasswordAsync("PKCS#12 密码", "该 PKCS#12 文件已加密，请输入密码：");
+                    password = await DialogService.ShowPasswordAsync(Loc.Get("X509_PfxPassword"), Loc.Get("X509_EnterPfxPassword"));
                     if (password is null)
                     {
                         return 0;
@@ -784,11 +788,11 @@ public sealed partial class X509Page : Page
                 if (certs.Count > 0 && certs[0].HasPrivateKey)
                 {
                     CertificateFileIO.Export(certs[0], path + ".tmp", CertificateFileFormat.Pkcs12, password, true);
-                    database.ImportCertificate(name, certs[0].ExportCertificatePem(), null, "从 " + Path.GetFileName(path) + " 导入");
+                    database.ImportCertificate(name, certs[0].ExportCertificatePem(), null, Loc.Format("X509_CommentImportedFrom", Path.GetFileName(path)));
                     using AsymmetricAlgorithm? privateKey = CertificateKeyIO.GetPrivateKey(certs[0]);
                     if (privateKey is not null)
                     {
-                        database.AddKey(name + " - 密钥", privateKey, "从 " + Path.GetFileName(path) + " 导入");
+                        database.AddKey(name + Loc.Get("X509_KeyNameSuffix"), privateKey, Loc.Format("X509_CommentImportedFrom", Path.GetFileName(path)));
                     }
                     try { File.Delete(path + ".tmp"); } catch (Exception) { }
                 }
@@ -796,7 +800,7 @@ public sealed partial class X509Page : Page
                 {
                     foreach (X509Certificate2 certificate in certs)
                     {
-                        database.ImportCertificate(name, certificate.ExportCertificatePem(), null, "从 " + Path.GetFileName(path) + " 导入");
+                        database.ImportCertificate(name, certificate.ExportCertificatePem(), null, Loc.Format("X509_CommentImportedFrom", Path.GetFileName(path)));
                     }
                 }
 
@@ -805,19 +809,19 @@ public sealed partial class X509Page : Page
             catch (CryptographicException)
             {
                 X509Certificate2 certificate = new(data);
-                database.ImportCertificate(name, certificate.ExportCertificatePem(), null, "从 " + Path.GetFileName(path) + " 导入");
+                database.ImportCertificate(name, certificate.ExportCertificatePem(), null, Loc.Format("X509_CommentImportedFrom", Path.GetFileName(path)));
                 return 1;
             }
         }
 
-        throw new InvalidOperationException("无法识别的文件格式。");
+        throw new InvalidOperationException(Loc.Get("Error_UnrecognizedFileFormat"));
     }
 
     private async void OnExportClick(object sender, RoutedEventArgs e)
     {
         if (ItemList.SelectedItem is not X509Item item)
         {
-            await DialogService.ShowMessageAsync("导出", "请先在列表中选择一个项目。");
+            await DialogService.ShowMessageAsync(Loc.Get("Common_Export"), Loc.Get("X509_SelectItemFirst"));
             return;
         }
 
@@ -841,18 +845,18 @@ public sealed partial class X509Page : Page
                     : database.GetCertificate(item);
                 if (certificate is null)
                 {
-                    await DialogService.ShowMessageAsync("导出失败", "证书内容无效。");
+                    await DialogService.ShowMessageAsync(Loc.Get("Stores_ExportFailed"), Loc.Get("X509_ErrorInvalidCertificate"));
                     return;
                 }
 
                 (string name, string[] extensions)[] types = options.Format switch
                 {
-                    0 => new[] { ("PEM 证书", new[] { ".crt", ".pem" }) },
-                    1 => new[] { ("DER 证书", new[] { ".cer" }) },
+                    0 => new[] { (Loc.Get("Stores_SavePemCert"), new[] { ".crt", ".pem" }) },
+                    1 => new[] { (Loc.Get("Stores_SaveDerCert"), new[] { ".cer" }) },
                     _ => new[] { ("PKCS#12", new[] { ".pfx", ".p12" }) },
                 };
 
-                string? path = await FilePickerHelper.PickSaveFileAsync(baseName, "导出", types);
+                string? path = await FilePickerHelper.PickSaveFileAsync(baseName, Loc.Get("Common_Export"), types);
                 if (path is null)
                 {
                     return;
@@ -866,33 +870,33 @@ public sealed partial class X509Page : Page
                 };
 
                 CertificateFileIO.Export(certificate, path, format, options.Password, options.IncludePrivateKey);
-                await DialogService.ShowMessageAsync("导出成功", "已导出到：" + path);
+                await DialogService.ShowMessageAsync(Loc.Get("Stores_ExportSuccessTitle"), Loc.Get("Common_ExportedTo") + path);
                 return;
             }
 
             if (item.Kind == X509ItemKind.Csr)
             {
-                string? path = await FilePickerHelper.PickSaveFileAsync(baseName, "导出", ("PEM 证书请求", new[] { ".csr", ".pem" }));
+                string? path = await FilePickerHelper.PickSaveFileAsync(baseName, Loc.Get("Common_Export"), (Loc.Get("X509_SavePemCsr"), new[] { ".csr", ".pem" }));
                 if (path is null)
                 {
                     return;
                 }
                 await File.WriteAllTextAsync(path, item.CsrPem ?? string.Empty);
-                await DialogService.ShowMessageAsync("导出成功", "已导出到：" + path);
+                await DialogService.ShowMessageAsync(Loc.Get("Stores_ExportSuccessTitle"), Loc.Get("Common_ExportedTo") + path);
                 return;
             }
 
-            string? keyPath = await FilePickerHelper.PickSaveFileAsync(baseName, "导出", ("PEM 私钥", new[] { ".key", ".pem" }));
+            string? keyPath = await FilePickerHelper.PickSaveFileAsync(baseName, Loc.Get("Common_Export"), (Loc.Get("X509_SavePemKey"), new[] { ".key", ".pem" }));
             if (keyPath is null)
             {
                 return;
             }
             await File.WriteAllTextAsync(keyPath, database.ExportPrivateKeyPem(item, options.Password));
-            await DialogService.ShowMessageAsync("导出成功", "已导出到：" + keyPath);
+            await DialogService.ShowMessageAsync(Loc.Get("Stores_ExportSuccessTitle"), Loc.Get("Common_ExportedTo") + keyPath);
         }
         catch (Exception ex)
         {
-            await DialogService.ShowErrorAsync("导出失败", ex);
+            await DialogService.ShowErrorAsync(Loc.Get("Stores_ExportFailed"), ex);
         }
     }
 
@@ -900,19 +904,19 @@ public sealed partial class X509Page : Page
     {
         if (ItemList.SelectedItem is not X509Item item)
         {
-            await DialogService.ShowMessageAsync("删除", "请先在列表中选择一个项目。");
+            await DialogService.ShowMessageAsync(Loc.Get("Common_Delete"), Loc.Get("X509_SelectItemFirst"));
             return;
         }
 
         X509Database database = AppServices.Database!;
         string extra = item.Kind == X509ItemKind.PrivateKey
-            ? "\n\n注意：使用该私钥的证书将失去关联的私钥。"
+            ? Loc.Get("X509_DeletePrivateKeyWarning")
             : string.Empty;
 
         bool confirmed = await DialogService.ShowConfirmAsync(
-            "删除项目",
-            $"确定要删除 \"{item.Name}\"（{item.KindText}）吗？此操作不可撤销。{extra}",
-            "删除");
+            Loc.Get("X509_DeleteTitle"),
+            Loc.Format("X509_ConfirmDelete", item.Name, item.KindText, extra),
+            Loc.Get("Common_Delete"));
         if (!confirmed)
         {
             return;
@@ -925,7 +929,7 @@ public sealed partial class X509Page : Page
         }
         catch (Exception ex)
         {
-            await DialogService.ShowErrorAsync("删除失败", ex);
+            await DialogService.ShowErrorAsync(Loc.Get("Stores_DeleteFailed"), ex);
         }
     }
 
@@ -937,25 +941,25 @@ public sealed partial class X509Page : Page
         }
 
         X509Database database = AppServices.Database!;
-        string? oldPassword = await DialogService.ShowPasswordAsync("修改数据库密码", "当前密码：");
+        string? oldPassword = await DialogService.ShowPasswordAsync(Loc.Get("X509_ChangePassword"), Loc.Get("X509_CurrentPassword"));
         if (oldPassword is null)
         {
             return;
         }
         if (!database.ValidatePassword(oldPassword))
         {
-            await DialogService.ShowMessageAsync("密码错误", "当前密码不正确。");
+            await DialogService.ShowMessageAsync(Loc.Get("Common_WrongPassword"), Loc.Get("X509_ErrorCurrentPassword"));
             return;
         }
 
-        string? newPassword = await DialogService.ShowPasswordAsync("修改数据库密码", "新密码：", confirmRequired: true);
+        string? newPassword = await DialogService.ShowPasswordAsync(Loc.Get("X509_ChangePassword"), Loc.Get("X509_NewPassword"), confirmRequired: true);
         if (newPassword is null)
         {
             return;
         }
         if (newPassword.Length == 0)
         {
-            await DialogService.ShowMessageAsync("密码不能为空", "新密码不能为空。");
+            await DialogService.ShowMessageAsync(Loc.Get("X509_PasswordRequiredTitle"), Loc.Get("X509_ErrorNewPasswordRequired"));
             return;
         }
 
@@ -963,11 +967,11 @@ public sealed partial class X509Page : Page
         {
             database.ChangePassword(oldPassword, newPassword);
             AppServices.Settings.Save();
-            await DialogService.ShowMessageAsync("完成", "数据库密码已更新，所有私钥已使用新密码重新加密。");
+            await DialogService.ShowMessageAsync(Loc.Get("Common_Done"), Loc.Get("X509_PasswordChanged"));
         }
         catch (Exception ex)
         {
-            await DialogService.ShowErrorAsync("修改密码失败", ex);
+            await DialogService.ShowErrorAsync(Loc.Get("X509_ErrorChangePassword"), ex);
         }
     }
 

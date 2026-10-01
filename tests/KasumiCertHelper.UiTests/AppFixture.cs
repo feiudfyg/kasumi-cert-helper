@@ -15,6 +15,7 @@ public sealed class AppFixture : IDisposable
     {
         string executable = LocateExecutable();
         ProfileDirectory = PrepareIsolatedProfile();
+        WriteTestSettings();
 
         var startInfo = new ProcessStartInfo(executable)
         {
@@ -27,10 +28,13 @@ public sealed class AppFixture : IDisposable
         Automation = new UIA3Automation();
 
         Window = WaitForWindow();
-        Poll(() => Window.FindFirstDescendant(cf => cf.ByName("证书存储")), 60);
+        Poll(() => Window.FindFirstDescendant(cf => cf.ByName(ChineseStorePage)), 60);
         Thread.Sleep(4000);
         BringToFront();
     }
+
+    /// <summary>Navigation label of the store page, asserted by <see cref="SelectPage"/> callers.</summary>
+    public const string ChineseStorePage = "证书存储";
 
     /// <summary>
     /// The app reads/writes settings, databases and its log under %APPDATA%\KasumiCertHelper. Point it
@@ -49,8 +53,80 @@ public sealed class AppFixture : IDisposable
         return root;
     }
 
+    /// <summary>
+    /// Pins the interface language. The assertions in these tests are written against the Chinese
+    /// table, and it keeps the run deterministic on machines with an English display language.
+    /// </summary>
+    private void WriteTestSettings()
+    {
+        string path = Path.Combine(ProfileDirectory, "settings.json");
+        File.WriteAllText(path, """{ "Language": "zh-CN" }""", System.Text.Encoding.UTF8);
+    }
+
+    /// <summary>
+    /// Re-acquires the main window after the shell was rebuilt (which is what a language change does:
+    /// the old window closes and a new one opens).
+    /// </summary>
+    public void WaitForRebuiltWindow()
+    {
+        int[] previous = RuntimeIdOf(Window);
+        Thread.Sleep(600);
+
+        Window? found = Poll(
+            () => Application.GetAllTopLevelWindows(Automation).FirstOrDefault(w =>
+            {
+                if (!(w.Title ?? string.Empty).Contains(WindowTitleFragment, StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
+
+                int[] id = RuntimeIdOf(w);
+                return id.Length > 0 && !id.SequenceEqual(previous);
+            }),
+            60) as Window;
+
+        if (found is null)
+        {
+            throw new TimeoutException("重建语言后未能找到新的主窗口。");
+        }
+
+        Window = found;
+        Window.WaitUntilClickable(TimeSpan.FromSeconds(30));
+        Thread.Sleep(2500);
+        BringToFront();
+    }
+
+    /// <summary>
+    /// Stable identity of an element. NativeWindowHandle is not reliable here (it throws for some
+    /// windows), and a stale element would otherwise make every lookup fail.
+    /// </summary>
+    private static int[] RuntimeIdOf(AutomationElement element)
+    {
+        try
+        {
+            return element.Properties.RuntimeId.ValueOrDefault ?? Array.Empty<int>();
+        }
+        catch (Exception)
+        {
+            return Array.Empty<int>();
+        }
+    }
+
+    private static bool IsSameElement(AutomationElement left, AutomationElement right)
+    {
+        int[] leftId = RuntimeIdOf(left);
+        int[] rightId = RuntimeIdOf(right);
+        return leftId.Length > 0 && leftId.SequenceEqual(rightId);
+    }
+
     private void DeleteIsolatedProfile()
     {
+        if (Environment.GetEnvironmentVariable("KASUMI_KEEP_TEST_PROFILE") == "1")
+        {
+            Console.WriteLine("kept test profile: " + ProfileDirectory);
+            return;
+        }
+
         try
         {
             if (Directory.Exists(ProfileDirectory))
@@ -88,7 +164,7 @@ public sealed class AppFixture : IDisposable
 
     public UIA3Automation Automation { get; }
 
-    public Window Window { get; }
+    public Window Window { get; private set; }
 
     public void Dispose()
     {
@@ -133,7 +209,7 @@ public sealed class AppFixture : IDisposable
 
     private AutomationElement? Probe(Func<AutomationElement, AutomationElement?> probe)
     {
-        AutomationElement? found = probe(Window);
+        AutomationElement? found = TryProbe(Window, probe);
         if (found is not null)
         {
             return found;
@@ -141,25 +217,31 @@ public sealed class AppFixture : IDisposable
 
         foreach (Window window in Application.GetAllTopLevelWindows(Automation))
         {
-            if (window.Properties.NativeWindowHandle.ValueOrDefault == Window.Properties.NativeWindowHandle.ValueOrDefault)
+            if (IsSameElement(window, Window))
             {
                 continue;
             }
 
-            try
+            found = TryProbe(window, probe);
+            if (found is not null)
             {
-                found = probe(window);
-                if (found is not null)
-                {
-                    return found;
-                }
-            }
-            catch (Exception)
-            {
+                return found;
             }
         }
 
         return null;
+    }
+
+    private static AutomationElement? TryProbe(AutomationElement window, Func<AutomationElement, AutomationElement?> probe)
+    {
+        try
+        {
+            return probe(window);
+        }
+        catch (Exception)
+        {
+            return null;
+        }
     }
 
     public void ClickButtonNamed(string name, int timeoutSeconds = 30)
@@ -299,7 +381,55 @@ public sealed class AppFixture : IDisposable
     public AutomationElement RequireById(string automationId, int timeoutSeconds = 20)
         => FindById(automationId, timeoutSeconds)
            ?? throw new InvalidOperationException(
-               $"未找到 AutomationId='{automationId}' 的控件。\n\n当前自动化树：\n{DumpTree()}");
+               $"未找到 AutomationId='{automationId}' 的控件。\n\n顶级窗口：{DescribeWindows()}\n\n当前自动化树：\n{DumpTree()}\n{DescribeOtherWindows()}");
+
+    /// <summary>Dumps the tree of every other top level window, which is where the probe looks too.</summary>
+    private string DescribeOtherWindows()
+    {
+        var builder = new StringBuilder();
+
+        foreach (Window window in Application.GetAllTopLevelWindows(Automation))
+        {
+            try
+            {
+                builder.AppendLine().Append("其它窗口 ").Append(window.Title).AppendLine(":");
+                Dump(window, builder, 0, 8);
+            }
+            catch (Exception exception)
+            {
+                builder.AppendLine().Append("  (无法读取: ").Append(exception.Message).AppendLine(")");
+            }
+        }
+
+        return builder.ToString();
+    }
+
+    /// <summary>Handles and titles of every top level window, for diagnosing stale window elements.</summary>
+    public string DescribeWindows()
+    {
+        var builder = new StringBuilder();
+        builder.Append("current=").Append(HandleOf(Window));
+
+        foreach (Window window in Application.GetAllTopLevelWindows(Automation))
+        {
+            builder.Append(" | ").Append(HandleOf(window)).Append(':');
+            try { builder.Append(window.Title); } catch (Exception) { builder.Append('?'); }
+        }
+
+        return builder.ToString();
+    }
+
+    private static string HandleOf(AutomationElement element)
+    {
+        try
+        {
+            return "0x" + element.Properties.NativeWindowHandle.ValueOrDefault.ToString("X");
+        }
+        catch (Exception)
+        {
+            return "(unknown)";
+        }
+    }
 
     public void SelectPage(string navigationItemName, string expectedAutomationId)
     {

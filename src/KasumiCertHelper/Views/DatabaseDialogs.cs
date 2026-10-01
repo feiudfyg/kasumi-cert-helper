@@ -3,6 +3,8 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 
+using KasumiCertHelper.Core.Localization;
+
 namespace KasumiCertHelper.Views;
 
 internal static class DatabasePaths
@@ -27,7 +29,7 @@ internal static class DatabaseDialogs
 
         var nameBox = new TextBox
         {
-            Header = "数据库名称",
+            Header = Loc.Get("Db_Name"),
             Text = "kasumi-" + DateTime.Now.ToString("yyyyMMdd-HHmmss"),
             MinWidth = 420,
         };
@@ -35,14 +37,14 @@ internal static class DatabaseDialogs
 
         var directoryBox = new TextBox
         {
-            Header = "保存目录",
+            Header = Loc.Get("Db_Directory"),
             Text = DatabasePaths.DefaultDirectory,
             MinWidth = 420,
             IsReadOnly = true,
         };
         AutomationProperties.SetAutomationId(directoryBox, "DbDirectory");
 
-        var browseButton = new Button { Content = "选择其他目录..." };
+        var browseButton = new Button { Content = Loc.Get("Db_ChooseDirectory") };
         browseButton.Click += async (_, _) =>
         {
             string? picked = await FilePickerHelper.PickFolderAsync();
@@ -52,10 +54,10 @@ internal static class DatabaseDialogs
             }
         };
 
-        var passwordBox = new PasswordBox { Header = "数据库密码（用于加密私钥）", MinWidth = 420 };
+        var passwordBox = new PasswordBox { Header = Loc.Get("Db_Password"), MinWidth = 420 };
         AutomationProperties.SetAutomationId(passwordBox, "DbPassword");
 
-        var confirmBox = new PasswordBox { Header = "确认密码", MinWidth = 420 };
+        var confirmBox = new PasswordBox { Header = Loc.Get("Db_PasswordConfirm"), MinWidth = 420 };
         AutomationProperties.SetAutomationId(confirmBox, "DbPasswordConfirm");
 
         var error = new TextBlock
@@ -68,7 +70,7 @@ internal static class DatabaseDialogs
         var panel = new StackPanel { Spacing = 10, MinWidth = 440 };
         panel.Children.Add(new TextBlock
         {
-            Text = "数据库中的所有私钥都会使用该密码加密存储（PKCS#8 / PBES2 / AES-256）。请务必牢记密码，忘记后无法恢复私钥。",
+            Text = Loc.Get("Db_PasswordHint"),
             TextWrapping = TextWrapping.Wrap,
         });
         panel.Children.Add(nameBox);
@@ -80,10 +82,10 @@ internal static class DatabaseDialogs
 
         var dialog = new ContentDialog
         {
-            Title = "新建证书数据库",
+            Title = Loc.Get("Db_NewTitle"),
             Content = new ScrollViewer { Content = panel, MaxHeight = 560 },
-            PrimaryButtonText = "创建",
-            CloseButtonText = "取消",
+            PrimaryButtonText = Loc.Get("Common_Create"),
+            CloseButtonText = Loc.Get("Common_Cancel"),
             DefaultButton = ContentDialogButton.Primary,
         };
 
@@ -108,19 +110,19 @@ internal static class DatabaseDialogs
 
         static string Validate(string directory, string name, string password, string confirm)
         {
-            if (string.IsNullOrWhiteSpace(name)) return "请输入数据库名称。";
-            if (string.IsNullOrWhiteSpace(directory)) return "请选择保存目录。";
-            if (password.Length == 0) return "数据库密码不能为空。";
-            if (password != confirm) return "两次输入的密码不一致。";
+            if (string.IsNullOrWhiteSpace(name)) return Loc.Get("Db_ErrorNameRequired");
+            if (string.IsNullOrWhiteSpace(directory)) return Loc.Get("Db_ErrorDirectoryRequired");
+            if (password.Length == 0) return Loc.Get("Db_ErrorPasswordRequired");
+            if (password != confirm) return Loc.Get("Dialog_PasswordMismatch");
 
             try
             {
                 string path = Path.Combine(directory.Trim(), DatabasePaths.Sanitize(name.Trim()) + ".kdb");
-                if (File.Exists(path)) return "该名称的数据库已存在，请更换名称。";
+                if (File.Exists(path)) return Loc.Get("Db_ErrorAlreadyExists");
             }
             catch (Exception ex)
             {
-                return "路径无效：" + ex.Message;
+                return Loc.Format("Db_ErrorInvalidPath", ex.Message);
             }
 
             return string.Empty;
@@ -131,17 +133,17 @@ internal static class DatabaseDialogs
     {
         var recentBox = new ComboBox
         {
-            Header = "最近使用的数据库",
+            Header = Loc.Get("Db_RecentList"),
             ItemsSource = recentDatabases.ToList(),
             MinWidth = 420,
             SelectedIndex = recentDatabases.Count > 0 ? 0 : -1,
-            PlaceholderText = "（无）",
+            PlaceholderText = Loc.Get("Db_NoRecent"),
         };
         AutomationProperties.SetAutomationId(recentBox, "DbRecent");
 
         var pathBox = new TextBox
         {
-            Header = "数据库路径",
+            Header = Loc.Get("Db_Path"),
             Text = recentDatabases.Count > 0 ? recentDatabases[0] : string.Empty,
             MinWidth = 420,
         };
@@ -155,17 +157,17 @@ internal static class DatabaseDialogs
             }
         };
 
-        var browseButton = new Button { Content = "浏览..." };
+        var browseButton = new Button { Content = Loc.Get("Common_Browse") };
         browseButton.Click += async (_, _) =>
         {
-            string? picked = await FilePickerHelper.PickOpenFileAsync("打开", ".kdb");
+            string? picked = await FilePickerHelper.PickOpenFileAsync(Loc.Get("Common_Open"), ".kdb");
             if (!string.IsNullOrEmpty(picked))
             {
                 pathBox.Text = picked;
             }
         };
 
-        var passwordBox = new PasswordBox { Header = "数据库密码", MinWidth = 420 };
+        var passwordBox = new PasswordBox { Header = Loc.Get("Db_PasswordOnly"), MinWidth = 420 };
         AutomationProperties.SetAutomationId(passwordBox, "DbPassword");
 
         var panel = new StackPanel { Spacing = 10, MinWidth = 440 };
@@ -176,10 +178,10 @@ internal static class DatabaseDialogs
 
         var dialog = new ContentDialog
         {
-            Title = "打开证书数据库",
+            Title = Loc.Get("Db_OpenTitle"),
             Content = panel,
-            PrimaryButtonText = "打开",
-            CloseButtonText = "取消",
+            PrimaryButtonText = Loc.Get("Common_Open"),
+            CloseButtonText = Loc.Get("Common_Cancel"),
             DefaultButton = ContentDialogButton.Primary,
         };
 
@@ -190,7 +192,7 @@ internal static class DatabaseDialogs
 
         if (string.IsNullOrWhiteSpace(pathBox.Text))
         {
-            await DialogService.ShowMessageAsync("打开数据库", "请选择一个数据库文件。");
+            await DialogService.ShowMessageAsync(Loc.Get("Db_OpenTitle"), Loc.Get("Db_ErrorSelectFile"));
             return null;
         }
 

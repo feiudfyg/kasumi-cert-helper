@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using KasumiCertHelper.Core.Localization;
 using KasumiCertHelper.Core.Services;
 
 namespace KasumiCertHelper.Core.Models;
@@ -103,9 +104,12 @@ public sealed class CertificateItem
 
     public string NotAfterText => NotAfter.ToString("yyyy-MM-dd HH:mm");
 
-    public string StatusText => IsExpired ? "已过期" : IsNotYetValid ? "尚未生效" : "有效";
+    public string StatusText => Loc.Get(
+        IsExpired ? "Cert_Validity_Expired"
+        : IsNotYetValid ? "Cert_Validity_NotYetValid"
+        : "Cert_Validity_Ok");
 
-    public string HasPrivateKeyText => HasPrivateKey ? "是" : "否";
+    public string HasPrivateKeyText => Loc.Get(HasPrivateKey ? "Common_Yes" : "Common_No");
 
     public string KeyAlgorithmText
     {

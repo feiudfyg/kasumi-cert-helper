@@ -10,11 +10,19 @@
     <ScrollViewer Padding="24">
         <StackPanel Spacing="18" MaxWidth="860" HorizontalAlignment="Left">
 
-            <TextBlock Text="设置" FontSize="26" FontWeight="SemiBold" />
+            <TextBlock Text="{x:Bind T('Settings_Title')}" FontSize="26" FontWeight="SemiBold" />
+
+            <StackPanel Spacing="8">
+                <TextBlock Text="{x:Bind T('Settings_LanguageSection')}" FontSize="18" FontWeight="SemiBold" />
+                <ComboBox x:Name="LanguageBox" Header="{x:Bind T('Settings_LanguageLabel')}" MinWidth="280"
+                          SelectionChanged="OnLanguageChanged" />
+                <TextBlock Text="{x:Bind T('Settings_LanguageHint')}" TextWrapping="Wrap" FontSize="12"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+            </StackPanel>
 
             <StackPanel Spacing="8">
                 <TextBlock Text="GnuPG" FontSize="18" FontWeight="SemiBold" />
-                <TextBlock Text="用于 GPG 密钥管理与加解密操作的可执行文件。" TextWrapping="Wrap"
+                <TextBlock Text="{x:Bind T('Settings_GpgSectionHint')}" TextWrapping="Wrap"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                 <Grid ColumnSpacing="8" RowSpacing="8">
                     <Grid.ColumnDefinitions>
@@ -26,43 +34,43 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
-                    <TextBox x:Name="GpgPathBox" Grid.Row="0" Grid.Column="0" Header="gpg.exe 路径" />
-                    <Button x:Name="BrowseGpgButton" Grid.Row="0" Grid.Column="1" Content="浏览..." Click="OnBrowseGpgClick" VerticalAlignment="Bottom" />
-                    <Button x:Name="DetectGpgButton" Grid.Row="0" Grid.Column="2" Content="自动检测" Click="OnDetectGpgClick" VerticalAlignment="Bottom" />
-                    <TextBox x:Name="GpgHomeBox" Grid.Row="1" Grid.Column="0" Header="GnuPG 主目录（可选，留空使用默认 %APPDATA%\gnupg）" />
-                    <Button x:Name="BrowseHomeButton" Grid.Row="1" Grid.Column="1" Content="浏览..." Click="OnBrowseHomeClick" VerticalAlignment="Bottom" />
+                    <TextBox x:Name="GpgPathBox" Grid.Row="0" Grid.Column="0" Header="{x:Bind T('Settings_GpgPathLabel')}" />
+                    <Button x:Name="BrowseGpgButton" Grid.Row="0" Grid.Column="1" Content="{x:Bind T('Common_Browse')}" Click="OnBrowseGpgClick" VerticalAlignment="Bottom" />
+                    <Button x:Name="DetectGpgButton" Grid.Row="0" Grid.Column="2" Content="{x:Bind T('Settings_AutoDetect')}" Click="OnDetectGpgClick" VerticalAlignment="Bottom" />
+                    <TextBox x:Name="GpgHomeBox" Grid.Row="1" Grid.Column="0" Header="{x:Bind T('Settings_GpgHomeLabel')}" />
+                    <Button x:Name="BrowseHomeButton" Grid.Row="1" Grid.Column="1" Content="{x:Bind T('Common_Browse')}" Click="OnBrowseHomeClick" VerticalAlignment="Bottom" />
                 </Grid>
                 <TextBlock x:Name="GpgVersionText" TextWrapping="Wrap" FontFamily="Consolas" FontSize="12"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                 <TextBlock x:Name="GpgOriginText" TextWrapping="Wrap" FontSize="12"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                 <StackPanel Orientation="Horizontal" Spacing="8">
-                    <Button x:Name="SaveGpgButton" Content="保存并应用" Click="OnSaveGpgClick" Style="{ThemeResource AccentButtonStyle}" />
-                    <Button x:Name="CheckGpgButton" Content="测试连接" Click="OnCheckGpgClick" />
+                    <Button x:Name="SaveGpgButton" Content="{x:Bind T('Settings_SaveAndApply')}" Click="OnSaveGpgClick" Style="{ThemeResource AccentButtonStyle}" />
+                    <Button x:Name="CheckGpgButton" Content="{x:Bind T('Settings_TestConnection')}" Click="OnCheckGpgClick" />
                 </StackPanel>
             </StackPanel>
 
             <StackPanel Spacing="8">
-                <TextBlock Text="证书存储" FontSize="18" FontWeight="SemiBold" />
+                <TextBlock Text="{x:Bind T('Settings_StoreSection')}" FontSize="18" FontWeight="SemiBold" />
                 <TextBlock x:Name="ElevationText" TextWrapping="Wrap" />
                 <StackPanel Orientation="Horizontal" Spacing="8">
-                    <Button x:Name="ElevateButton" Content="以管理员身份重启" Click="OnElevateClick" />
-                    <Button x:Name="OpenCertMgrButton" Content="打开 certmgr.msc" Click="OnOpenCertMgrClick" />
+                    <Button x:Name="ElevateButton" Content="{x:Bind T('Common_RestartElevated')}" Click="OnElevateClick" />
+                    <Button x:Name="OpenCertMgrButton" Content="{x:Bind T('Stores_OpenCertMgr')}" Click="OnOpenCertMgrClick" />
                 </StackPanel>
             </StackPanel>
 
             <StackPanel Spacing="8">
-                <TextBlock Text="证书数据库" FontSize="18" FontWeight="SemiBold" />
+                <TextBlock Text="{x:Bind T('Settings_DatabaseSection')}" FontSize="18" FontWeight="SemiBold" />
                 <TextBlock x:Name="DatabaseText" TextWrapping="Wrap"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
             </StackPanel>
 
             <StackPanel Spacing="8">
-                <TextBlock Text="关于" FontSize="18" FontWeight="SemiBold" />
+                <TextBlock Text="{x:Bind T('Settings_AboutSection')}" FontSize="18" FontWeight="SemiBold" />
                 <TextBlock x:Name="AboutText" TextWrapping="Wrap" />
                 <StackPanel Orientation="Horizontal" Spacing="8">
-                    <Button x:Name="OpenLogFolderButton" Content="打开日志目录" Click="OnOpenLogFolderClick" />
-                    <Button x:Name="OpenAppDataButton" Content="打开配置目录" Click="OnOpenAppDataClick" />
+                    <Button x:Name="OpenLogFolderButton" Content="{x:Bind T('Settings_OpenLogFolder')}" Click="OnOpenLogFolderClick" />
+                    <Button x:Name="OpenAppDataButton" Content="{x:Bind T('Settings_OpenAppDataFolder')}" Click="OnOpenAppDataClick" />
                 </StackPanel>
             </StackPanel>
 

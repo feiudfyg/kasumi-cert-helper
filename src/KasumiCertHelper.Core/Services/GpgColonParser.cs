@@ -1,4 +1,5 @@
 using System.Text;
+using KasumiCertHelper.Core.Localization;
 using KasumiCertHelper.Core.Models;
 
 namespace KasumiCertHelper.Core.Services;
@@ -179,7 +180,7 @@ public static class GpgColonParser
         "24" or "27" => "Ed25519",
         "25" => "X25519",
         "26" or "28" => "X448",
-        _ => code.Length == 0 ? "未知" : "算法 " + code,
+        _ => code.Length == 0 ? Loc.Get("Gpg_Validity_Unknown") : Loc.Format("Gpg_AlgorithmPrefix", code),
     };
 
     private static string Unescape(string value)

@@ -1,6 +1,8 @@
 using KasumiCertHelper.Controls;
 using KasumiCertHelper.Core.Models;
 
+using KasumiCertHelper.Core.Localization;
+
 namespace KasumiCertHelper.ViewModels;
 
 /// <summary>
@@ -80,7 +82,7 @@ public sealed class GpgRow
 
     public string AlgorithmText => Key.AlgorithmText;
 
-    public string ExpiresText => Key.Expires is null ? "永不过期" : Key.Expires.Value.ToString("yyyy-MM-dd");
+    public string ExpiresText => Key.Expires is null ? Loc.Get("Gpg_NeverExpires") : Key.Expires.Value.ToString("yyyy-MM-dd");
 
     public string SecretText => Key.SecretText;
 

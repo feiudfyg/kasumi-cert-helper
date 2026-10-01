@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using KasumiCertHelper.Core.Localization;
 using System.Text;
 
 namespace KasumiCertHelper.Core.Services;
@@ -18,7 +19,7 @@ public static class CertificateFileIO
         ArgumentNullException.ThrowIfNull(data);
         if (data.Length == 0)
         {
-            throw new CryptographicException("文件内容为空。");
+            throw new CryptographicException(Loc.Get("Error_EmptyFile"));
         }
 
         string? text = TryGetText(data);
@@ -82,7 +83,7 @@ public static class CertificateFileIO
                 {
                     if (string.IsNullOrEmpty(password))
                     {
-                        throw new CryptographicException("私钥已加密，请输入密码。");
+                        throw new CryptographicException(Loc.Get("Error_PrivateKeyEncryptedEnterPassword"));
                     }
                     withKey = X509Certificate2.CreateFromEncryptedPem(certPem, text, password);
                 }
@@ -100,7 +101,7 @@ public static class CertificateFileIO
 
         if (result.Count == 0)
         {
-            throw new CryptographicException("PEM 文件中未找到证书。");
+            throw new CryptographicException(Loc.Get("Error_NoCertificateInPemFile"));
         }
 
         return result;

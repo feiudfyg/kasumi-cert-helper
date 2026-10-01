@@ -443,6 +443,60 @@ public class SettingsPageTests
     [Fact]
     public void SettingsPageLoads()
     {
+        OpenSettings();
+
+        Assert.NotNull(_app.RequireById("GpgPathBox"));
+        Assert.NotNull(_app.RequireById("ElevationText"));
+        Assert.NotNull(_app.RequireById("GpgOriginText"));
+        Assert.NotNull(_app.RequireById("LanguageBox"));
+    }
+
+    /// <summary>
+    /// The interface language is chosen in the settings. Every XAML string is resolved while a page is
+    /// parsed, so switching has to rebuild the shell; this checks both languages really render.
+    /// </summary>
+    [Fact]
+    public void SwitchingLanguageRebuildsTheInterfaceInTheOtherLanguage()
+    {
+        OpenSettings();
+
+        try
+        {
+            SelectLanguage(1);
+
+            Assert.True(
+                _app.WaitUntil(() => _app.FindByName("Certificate stores", 5) is not null, 40),
+                "切到英文后导航栏没有显示英文的存储页面名称。\n" + _app.DumpTree(6));
+
+            Assert.Contains("Kasumi Certificate Helper", _app.Window.Title ?? string.Empty);
+            Assert.True(
+                _app.WaitUntil(() => _app.FindByName("Settings", 5) is not null, 20),
+                "英文界面里没有找到 Settings。");
+
+            // The other two pages have the largest number of strings, so check their toolbars too.
+            _app.SelectPage("X.509 certificates", "ItemList");
+            Assert.True(
+                _app.WaitUntil(() => _app.FindByName("New database", 5) is not null, 20),
+                "英文界面的 X.509 工具栏没有本地化。\n" + _app.DumpTree(7));
+
+            _app.SelectPage("GPG / GnuPG", "KeyList");
+            Assert.True(
+                _app.WaitUntil(() => _app.FindByName("Generate key pair", 5) is not null, 20),
+                "英文界面的 GPG 工具栏没有本地化。\n" + _app.DumpTree(7));
+        }
+        finally
+        {
+            // Restore Chinese: the other tests in this collection assert Chinese labels.
+            SelectLanguage(2);
+
+            Assert.True(
+                _app.WaitUntil(() => _app.FindByName(AppFixture.ChineseStorePage, 5) is not null, 40),
+                "切回中文后导航栏没有恢复中文名称。");
+        }
+    }
+
+    private void OpenSettings()
+    {
         AutomationElement? settingsItem = _app.Poll(() =>
         {
             AutomationElement[] matches = _app.Window.FindAllDescendants(cf => cf.ByName("设置"));
@@ -454,11 +508,24 @@ public class SettingsPageTests
         }, 30);
 
         Assert.NotNull(settingsItem);
-        settingsItem!.Click();
+        AppFixture.Activate(settingsItem!);
         Thread.Sleep(2000);
+    }
 
-        Assert.NotNull(_app.RequireById("GpgPathBox"));
-        Assert.NotNull(_app.RequireById("ElevationText"));
-        Assert.NotNull(_app.RequireById("GpgOriginText"));
+    /// <summary>Index 0 follows Windows, 1 is English, 2 is Chinese (see Loc.SupportedCultures).</summary>
+    private void SelectLanguage(int index)
+    {
+        // The dropdown only exists on the settings page, which the caller may have navigated away from.
+        OpenSettings();
+
+        AutomationElement box = _app.RequireById("LanguageBox", 30);
+
+        if (!_app.WaitUntil(() => box.AsComboBox().Items.Length > index, 20))
+        {
+            throw new InvalidOperationException("语言下拉列表中没有足够的条目。");
+        }
+
+        box.AsComboBox().Select(index);
+        _app.WaitForRebuiltWindow();
     }
 }

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using KasumiCertHelper.Core.Localization;
 using KasumiCertHelper.Core.Models;
 
 namespace KasumiCertHelper.Core.Services;
@@ -131,7 +132,7 @@ public sealed class GpgService
     {
         if (!IsAvailable)
         {
-            throw new InvalidOperationException("未找到 gpg.exe，请在设置中指定 GnuPG 可执行文件路径。");
+            throw new InvalidOperationException(Loc.Get("Error_GpgNotFound"));
         }
 
         var startInfo = new ProcessStartInfo
@@ -181,7 +182,7 @@ public sealed class GpgService
         if (!process.WaitForExit(timeoutMs))
         {
             try { process.Kill(true); } catch (Exception) { }
-            throw new TimeoutException("GPG 命令执行超时。");
+            throw new TimeoutException(Loc.Get("Error_GpgTimeout"));
         }
 
         string stdout = stdoutTask.GetAwaiter().GetResult();
@@ -250,7 +251,7 @@ public sealed class GpgService
         ArgumentNullException.ThrowIfNull(options);
         if (string.IsNullOrWhiteSpace(options.RealName))
         {
-            throw new ArgumentException("必须提供姓名。", nameof(options));
+            throw new ArgumentException(Loc.Get("Error_NameRequired"), nameof(options));
         }
 
         string parameters = BuildKeyParameters(options);
@@ -271,7 +272,7 @@ public sealed class GpgService
     private static string BuildKeyParameters(GpgKeyGenerationOptions options)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("%echo 正在生成 OpenPGP 密钥...");
+        sb.AppendLine("%echo " + Loc.Get("Gpg_Batch_GeneratingKey"));
 
         switch (options.Algorithm)
         {
@@ -328,7 +329,7 @@ public sealed class GpgService
         }
 
         sb.AppendLine("%commit");
-        sb.AppendLine("%echo 完成");
+        sb.AppendLine("%echo " + Loc.Get("Gpg_Batch_Done"));
         return sb.ToString();
     }
 
@@ -363,7 +364,7 @@ public sealed class GpgService
         GpgResult result = Run(arguments, standardInput: passphrase is null ? null : passphrase + "\n");
         if (!result.Success && !File.Exists(outputPath))
         {
-            throw new InvalidOperationException("导出失败: " + result.StandardError.Trim());
+            throw new InvalidOperationException(Loc.Format("Error_ExportFailed", result.StandardError.Trim()));
         }
     }
 

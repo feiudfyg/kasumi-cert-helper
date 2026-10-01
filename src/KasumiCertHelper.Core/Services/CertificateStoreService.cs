@@ -1,28 +1,30 @@
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using KasumiCertHelper.Core.Localization;
 using KasumiCertHelper.Core.Models;
 
 namespace KasumiCertHelper.Core.Services;
 
 public sealed class CertificateStoreService
 {
+    // Resource keys, resolved on demand so the store list follows the active language.
     private static readonly Dictionary<string, string> FriendlyStoreNames = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["My"] = "个人",
-        ["Root"] = "受信任的根证书颁发机构",
-        ["CA"] = "中间证书颁发机构",
-        ["AuthRoot"] = "第三方根证书颁发机构",
-        ["Trust"] = "企业信任",
-        ["Disallowed"] = "不信任的证书",
-        ["TrustedPeople"] = "受信任人",
-        ["TrustedPublisher"] = "受信任的发布者",
-        ["AddressBook"] = "其他人",
-        ["Remote Desktop"] = "远程桌面",
-        ["SmartCard"] = "智能卡受信任的根",
-        ["ClientAuthIssuer"] = "客户端身份验证颁发者",
-        ["UserDS"] = "Active Directory 用户对象",
-        ["Request"] = "证书注册请求",
-        ["REQUESTS"] = "证书注册请求",
+        ["My"] = "Store_Name_My",
+        ["Root"] = "Store_Name_Root",
+        ["CA"] = "Store_Name_CA",
+        ["AuthRoot"] = "Store_Name_AuthRoot",
+        ["Trust"] = "Store_Name_Trust",
+        ["Disallowed"] = "Store_Name_Disallowed",
+        ["TrustedPeople"] = "Store_Name_TrustedPeople",
+        ["TrustedPublisher"] = "Store_Name_TrustedPublisher",
+        ["AddressBook"] = "Store_Name_AddressBook",
+        ["Remote Desktop"] = "Store_Name_RemoteDesktop",
+        ["SmartCard"] = "Store_Name_SmartCard",
+        ["ClientAuthIssuer"] = "Store_Name_ClientAuthIssuer",
+        ["UserDS"] = "Store_Name_UserDS",
+        ["Request"] = "Store_Name_Request",
+        ["REQUESTS"] = "Store_Name_Request",
     };
 
     public static readonly string[] StandardStores =
@@ -43,7 +45,7 @@ public sealed class CertificateStoreService
     };
 
     public static string GetFriendlyStoreName(string storeName)
-        => FriendlyStoreNames.TryGetValue(storeName, out string? friendly) ? friendly : storeName;
+        => FriendlyStoreNames.TryGetValue(storeName, out string? friendly) ? Loc.Get(friendly) : storeName;
 
     public static string GetPhysicalStoreRoot(StoreLocation location) => location switch
     {
@@ -131,7 +133,7 @@ public sealed class CertificateStoreService
     {
         try
         {
-            using var store = new X509Store(storeName, location);
+        using var store = new X509Store(storeName, location);
             store.Open(OpenFlags.ReadOnly | OpenFlags.OpenExistingOnly);
             return store.Certificates.Count;
         }
@@ -213,7 +215,7 @@ public sealed class CertificateStoreService
                 return;
             }
         }
-        throw new CryptographicException("在存储中找不到指定的证书。");
+        throw new CryptographicException(Loc.Get("Error_CertificateNotFoundInStore"));
     }
 
     public X509KeyStorageFlags GetStorageFlags(StoreLocation location)
@@ -231,7 +233,7 @@ public sealed class CertificateStoreService
         IReadOnlyList<X509Certificate2> certificates = CertificateFileIO.Load(data, password, loadFlags);
         if (certificates.Count == 0)
         {
-            throw new CryptographicException("文件中未找到任何证书。");
+            throw new CryptographicException(Loc.Get("Error_NoCertificateInFile"));
         }
 
         X509KeyStorageFlags flags = GetStorageFlags(location);

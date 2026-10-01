@@ -4,6 +4,7 @@ using KasumiCertHelper.Core.Models;
 using KasumiCertHelper.Core.Services;
 using KasumiCertHelper.Services;
 using KasumiCertHelper.ViewModels;
+using KasumiCertHelper.Core.Localization;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -14,6 +15,9 @@ namespace KasumiCertHelper.Views;
 
 public sealed partial class GpgPage : Page
 {
+    /// <summary>Resolves a resource key for XAML, see <c>{x:Bind T('Key')}</c>.</summary>
+    public string T(string key) => Loc.Get(key);
+
     private const string ColumnsKey = "Gpg.Columns";
     private const string ListPaneKey = "Gpg.ListPaneWidth";
 
@@ -89,11 +93,11 @@ public sealed partial class GpgPage : Page
 
         if (!gpg.IsAvailable)
         {
-            DetailStatusText.Text = "未找到 GnuPG，请安装 Gpg4win 或在设置中指定 gpg.exe 的路径。";
+            DetailStatusText.Text = Loc.Get("Gpg_DetailGpgMissing");
             return;
         }
 
-        string origin = gpg.IsBundled ? "内置副本" : "系统安装";
+        string origin = Loc.Get(gpg.IsBundled ? "Gpg_OriginBundled" : "Gpg_OriginSystem");
         string version = string.Empty;
         try
         {
@@ -101,11 +105,11 @@ public sealed partial class GpgPage : Page
         }
         catch (Exception ex)
         {
-            AppServices.Log("读取 GPG 版本失败: " + ex.Message);
+            AppServices.Log(Loc.Format("Gpg_LogReadVersionFailed", ex.Message));
         }
 
         DetailStatusText.Text = string.IsNullOrWhiteSpace(version)
-            ? $"使用 {origin}：{gpg.ExecutablePath}"
+            ? Loc.Format("Gpg_OriginLine", origin, gpg.ExecutablePath)
             : $"{version}（{origin}）";
         ToolTipService.SetToolTip(GpgInfoBar, gpg.ExecutablePath);
     }
@@ -128,7 +132,7 @@ public sealed partial class GpgPage : Page
         catch (Exception ex)
         {
             _all = new List<GpgKey>();
-            await DialogService.ShowErrorAsync("读取 GPG 密钥失败", ex);
+            await DialogService.ShowErrorAsync(Loc.Get("Gpg_ErrorListKeys"), ex);
         }
         finally
         {
@@ -169,8 +173,8 @@ public sealed partial class GpgPage : Page
         }
 
         CountText.Text = _all.Count == _visible.Count
-            ? $"共 {_visible.Count} 个"
-            : $"{_visible.Count} / {_all.Count} 个";
+            ? Loc.Format("Gpg_KeyCountAll", _visible.Count)
+            : Loc.Format("Gpg_KeyCountFiltered", _visible.Count, _all.Count);
 
         if (KeyEmptyState is null)
         {
@@ -179,10 +183,10 @@ public sealed partial class GpgPage : Page
 
         KeyEmptyState.Visibility = _visible.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         KeyEmptyText.Text = !AppServices.Gpg.IsAvailable
-            ? "未找到 GnuPG，无法读取密钥。"
+            ? Loc.Get("Gpg_NoKeysGpgMissing")
             : _all.Count == 0
-                ? "本机密钥环中还没有密钥。可以使用「生成密钥对」创建，或导入现有的密钥。"
-                : "没有符合筛选条件的密钥。";
+                ? Loc.Get("Gpg_NoKeysEmpty")
+                : Loc.Get("Gpg_NoKeysFiltered");
     }
 
     private void OnSearchTextChanged(object sender, TextChangedEventArgs e) => ApplyFilter();
@@ -196,7 +200,7 @@ public sealed partial class GpgPage : Page
     {
         if (key is null)
         {
-            DetailTitle.Text = "密钥详细信息";
+            DetailTitle.Text = Loc.Get("Gpg_DetailsTitle");
             DetailPanel.Children.Clear();
             DetailEmptyState.Visibility = Visibility.Visible;
             return;
@@ -211,15 +215,15 @@ public sealed partial class GpgPage : Page
     {
         var basic = new List<DetailItem>
         {
-            new("Fingerprint", "指纹", key.GroupedFingerprint, Monospace: true),
-            new("KeyId", "密钥 ID", key.KeyId),
-            new("Algorithm", "算法", key.AlgorithmText),
-            new("Curve", "曲线", key.Curve),
-            new("Created", "创建时间", key.Created?.ToString("yyyy-MM-dd HH:mm:ss") ?? string.Empty),
-            new("Expires", "过期时间", key.Expires is null ? "永不过期" : key.Expires.Value.ToString("yyyy-MM-dd HH:mm:ss")),
-            new("Status", "状态", key.StatusText),
-            new("Capabilities", "具备能力", DescribeCapabilities(key.Capabilities)),
-            new("Secret", "私钥", key.HasSecret ? "存在于本机密钥环" : "不存在（仅公钥）"),
+            new("Fingerprint", Loc.Get("Gpg_Row_Fingerprint"), key.GroupedFingerprint, Monospace: true),
+            new("KeyId", Loc.Get("Gpg_Row_KeyId"), key.KeyId),
+            new("Algorithm", Loc.Get("Gpg_HeaderAlgorithm"), key.AlgorithmText),
+            new("Curve", Loc.Get("Gpg_Detail_Curve"), key.Curve),
+            new("Created", Loc.Get("X509_Detail_Created"), key.Created?.ToString("yyyy-MM-dd HH:mm:ss") ?? string.Empty),
+            new("Expires", Loc.Get("Cert_Row_NotAfter"), key.Expires is null ? Loc.Get("Gpg_NeverExpires") : key.Expires.Value.ToString("yyyy-MM-dd HH:mm:ss")),
+            new("Status", Loc.Get("Cert_Row_Status"), key.StatusText),
+            new("Capabilities", Loc.Get("Gpg_Detail_Capabilities"), DescribeCapabilities(key.Capabilities)),
+            new("Secret", Loc.Get("Cert_Row_PrivateKey"), Loc.Get(key.HasSecret ? "Gpg_Detail_SecretPresent" : "Gpg_Detail_SecretAbsent")),
         };
 
         var uids = new List<DetailItem>();
@@ -228,7 +232,7 @@ public sealed partial class GpgPage : Page
             GpgUid uid = key.UserIds[i];
             uids.Add(new DetailItem(
                 "Uid" + i,
-                uid.IsPrimary ? "主用户 ID" : "用户 ID " + (i + 1),
+                Loc.Get(uid.IsPrimary ? "Gpg_Detail_PrimaryUid" : "Gpg_Detail_Uid") + (uid.IsPrimary ? string.Empty : (i + 1).ToString()),
                 $"{uid.Value}　[{uid.ValidityText}]"));
         }
 
@@ -239,18 +243,18 @@ public sealed partial class GpgPage : Page
             var parts = new List<string>
             {
                 subkey.AlgorithmText,
-                "能力：" + DescribeCapabilities(subkey.Capabilities),
-                subkey.HasSecret ? "含私钥" : "仅公钥",
-                subkey.Expires is null ? "永不过期" : "有效至 " + subkey.Expires.Value.ToString("yyyy-MM-dd"),
+                Loc.Get("Gpg_Detail_CapabilitiesPrefix") + DescribeCapabilities(subkey.Capabilities),
+                Loc.Get(subkey.HasSecret ? "Gpg_HasSecret" : "Gpg_PublicKeyOnly"),
+                subkey.Expires is null ? Loc.Get("Gpg_NeverExpires") : Loc.Get("Gpg_Detail_ValidUntil") + subkey.Expires.Value.ToString("yyyy-MM-dd"),
             };
-            subkeys.Add(new DetailItem("Sub" + i, "子密钥 " + (i + 1), string.Join("；", parts) + "\n" + subkey.Fingerprint, Monospace: true));
+            subkeys.Add(new DetailItem("Sub" + i, Loc.Format("Gpg_Detail_Subkey", i + 1), string.Join(Loc.Get("Common_SentenceSeparator"), parts) + "\n" + subkey.Fingerprint, Monospace: true));
         }
 
         return new List<DetailSection>
         {
-            new("基本信息", basic, Expanded: true),
-            new("用户 ID", uids, Expanded: true),
-            new("子密钥", subkeys),
+            new(Loc.Get("Detail_Section_Basic"), basic, Expanded: true),
+            new(Loc.Get("Gpg_Detail_UidSection"), uids, Expanded: true),
+            new(Loc.Get("Gpg_Detail_SubkeysSection"), subkeys),
         };
     }
 
@@ -258,7 +262,7 @@ public sealed partial class GpgPage : Page
     {
         if (string.IsNullOrWhiteSpace(capabilities))
         {
-            return "未知";
+            return Loc.Get("Gpg_Validity_Unknown");
         }
 
         var usable = new SortedSet<string>(StringComparer.Ordinal);
@@ -268,10 +272,10 @@ public sealed partial class GpgPage : Page
         {
             string? text = char.ToLowerInvariant(c) switch
             {
-                'e' => "加密",
-                's' => "签名",
-                'c' => "认证",
-                'a' => "身份验证",
+                'e' => Loc.Get("Gpg_Capability_Encrypt"),
+                's' => Loc.Get("Gpg_Capability_Sign"),
+                'c' => Loc.Get("Gpg_Capability_Certify"),
+                'a' => Loc.Get("Gpg_Capability_Authenticate"),
                 _ => null,
             };
 
@@ -286,14 +290,14 @@ public sealed partial class GpgPage : Page
         var parts = new List<string>();
         if (usable.Count > 0)
         {
-            parts.Add("可" + string.Join("、", usable));
+            parts.Add(Loc.Format("Gpg_CapabilitiesUsable", string.Join(Loc.Get("Common_ListSeparator"), usable)));
         }
         if (unavailable.Count > 0)
         {
-            parts.Add("密钥环中不可用：" + string.Join("、", unavailable));
+            parts.Add(Loc.Format("Gpg_CapabilitiesUnavailable", string.Join(Loc.Get("Common_ListSeparator"), unavailable)));
         }
 
-        return parts.Count == 0 ? capabilities : string.Join("；", parts);
+        return parts.Count == 0 ? capabilities : string.Join(Loc.Get("Common_SentenceSeparator"), parts);
     }
 
     // ---------------------------------------------------------------- context menu
@@ -307,16 +311,16 @@ public sealed partial class GpgPage : Page
 
         KeyList.SelectedItem = row;
         var flyout = new MenuFlyout();
-        flyout.Items.Add(BuildMenuItem("复制指纹", "\uE8C8", () => CopyToClipboard(row.Key.GroupedFingerprint)));
-        flyout.Items.Add(BuildMenuItem("复制用户 ID", "\uE8C8", () => CopyToClipboard(row.Key.PrimaryUserId)));
+        flyout.Items.Add(BuildMenuItem(Loc.Get("Gpg_CopyFingerprint"), "\uE8C8", () => CopyToClipboard(row.Key.GroupedFingerprint)));
+        flyout.Items.Add(BuildMenuItem(Loc.Get("Gpg_MenuCopyUserId"), "\uE8C8", () => CopyToClipboard(row.Key.PrimaryUserId)));
         flyout.Items.Add(new MenuFlyoutSeparator());
-        flyout.Items.Add(BuildMenuItem("导出公钥...", "\uE898", () => OnExportPublicClick(this, new RoutedEventArgs())));
+        flyout.Items.Add(BuildMenuItem(Loc.Get("Gpg_MenuExportPublic"), "\uE898", () => OnExportPublicClick(this, new RoutedEventArgs())));
         if (row.Key.HasSecret)
         {
-            flyout.Items.Add(BuildMenuItem("导出私钥...", "\uE72E", () => OnExportSecretClick(this, new RoutedEventArgs())));
+            flyout.Items.Add(BuildMenuItem(Loc.Get("Gpg_MenuExportSecret"), "\uE72E", () => OnExportSecretClick(this, new RoutedEventArgs())));
         }
         flyout.Items.Add(new MenuFlyoutSeparator());
-        flyout.Items.Add(BuildMenuItem("删除密钥", "\uE74D", () => OnDeleteClick(this, new RoutedEventArgs())));
+        flyout.Items.Add(BuildMenuItem(Loc.Get("Gpg_DeleteKey"), "\uE74D", () => OnDeleteClick(this, new RoutedEventArgs())));
 
         flyout.ShowAt(element, new FlyoutShowOptions { Position = e.GetPosition(element) });
         e.Handled = true;
@@ -344,7 +348,7 @@ public sealed partial class GpgPage : Page
     {
         if (KeyList.SelectedItem is not GpgRow row)
         {
-            _ = DialogService.ShowMessageAsync("复制指纹", "请先在列表中选择一个密钥。");
+            _ = DialogService.ShowMessageAsync(Loc.Get("Gpg_CopyFingerprint"), Loc.Get("Gpg_SelectKeyFirst"));
             return;
         }
 
@@ -363,7 +367,7 @@ public sealed partial class GpgPage : Page
     {
         if (!AppServices.Gpg.IsAvailable)
         {
-            await DialogService.ShowMessageAsync("未找到 GnuPG", "请先安装 Gpg4win、使用内置的 GnuPG，或在设置中指定 gpg.exe 的路径。");
+            await DialogService.ShowMessageAsync(Loc.Get("Gpg_NotFoundTitle"), Loc.Get("Gpg_NotFoundMessageLong"));
             return null;
         }
 
@@ -377,7 +381,7 @@ public sealed partial class GpgPage : Page
         }
         catch (Exception ex)
         {
-            await DialogService.ShowErrorAsync(title + "失败", ex);
+            await DialogService.ShowErrorAsync(title + Loc.Get("Common_FailedSuffix"), ex);
             return null;
         }
         finally
@@ -397,7 +401,7 @@ public sealed partial class GpgPage : Page
                 MaxHeight = 480,
                 MinWidth = 400,
             },
-            PrimaryButtonText = "确定",
+            PrimaryButtonText = Loc.Get("Common_Ok"),
             DefaultButton = ContentDialogButton.Primary,
         };
 
@@ -414,7 +418,7 @@ public sealed partial class GpgPage : Page
 
     private async void OnLocateGpgClick(object sender, RoutedEventArgs e)
     {
-        string? path = await FilePickerHelper.PickOpenFileAsync("选择 gpg.exe", ".exe");
+        string? path = await FilePickerHelper.PickOpenFileAsync(Loc.Get("Gpg_ChooseGpgExe"), ".exe");
         if (path is null)
         {
             return;
@@ -429,19 +433,19 @@ public sealed partial class GpgPage : Page
 
     private async void OnGenerateClick(object sender, RoutedEventArgs e)
     {
-        var nameBox = new TextBox { Header = "姓名 (Name-Real)", PlaceholderText = "例如 Kasumi User" };
-        var emailBox = new TextBox { Header = "电子邮件 (Name-Email)" };
-        var commentBox = new TextBox { Header = "备注 (Name-Comment)" };
+        var nameBox = new TextBox { Header = Loc.Get("Gpg_Gen_Name"), PlaceholderText = Loc.Get("Gpg_Gen_NameHint") };
+        var emailBox = new TextBox { Header = Loc.Get("Gpg_Gen_Email") };
+        var commentBox = new TextBox { Header = Loc.Get("Gpg_Gen_Comment") };
         var algorithmBox = new ComboBox
         {
-            Header = "算法",
+            Header = Loc.Get("Gpg_HeaderAlgorithm"),
             ItemsSource = new[] { "RSA (2048/3072/4096)", "ECC (NIST/Brainpool)", "Ed25519" },
             SelectedIndex = 0,
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
         var lengthBox = new NumberBox
         {
-            Header = "RSA 密钥长度",
+            Header = Loc.Get("Gpg_Gen_RsaKeySize"),
             Minimum = 1024,
             Maximum = 8192,
             Value = 4096,
@@ -450,15 +454,15 @@ public sealed partial class GpgPage : Page
         };
         var curveBox = new ComboBox
         {
-            Header = "椭圆曲线 (ECC)",
+            Header = Loc.Get("Gpg_Gen_Curve"),
             ItemsSource = new[] { "nistp256", "nistp384", "nistp521", "brainpoolP256r1", "brainpoolP384r1", "brainpoolP512r1" },
             SelectedIndex = 0,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             IsEnabled = false,
         };
-        var expireBox = new TextBox { Header = "有效期", Text = "2y", PlaceholderText = "例如 2y / 365d / 0 表示永不过期" };
-        var passphraseBox = new PasswordBox { Header = "私钥密码（留空表示不加密）" };
-        var subkeyCheck = new CheckBox { Content = "同时生成加密子密钥", IsChecked = true };
+        var expireBox = new TextBox { Header = Loc.Get("Gpg_Gen_Expires"), Text = "2y", PlaceholderText = Loc.Get("Gpg_Gen_ExpiresHint") };
+        var passphraseBox = new PasswordBox { Header = Loc.Get("Gpg_Gen_Passphrase") };
+        var subkeyCheck = new CheckBox { Content = Loc.Get("Gpg_Gen_Subkey"), IsChecked = true };
 
         algorithmBox.SelectionChanged += (_, _) =>
         {
@@ -469,7 +473,7 @@ public sealed partial class GpgPage : Page
         var panel = new StackPanel { Spacing = 10, MinWidth = 340 };
         panel.Children.Add(new TextBlock
         {
-            Text = "密钥生成可能需要数分钟（尤其是 4096 位 RSA）。期间请勿关闭程序。",
+            Text = Loc.Get("Gpg_Gen_Hint"),
             TextWrapping = TextWrapping.Wrap,
         });
         panel.Children.Add(nameBox);
@@ -484,10 +488,10 @@ public sealed partial class GpgPage : Page
 
         var dialog = new ContentDialog
         {
-            Title = "生成 OpenPGP 密钥对",
+            Title = Loc.Get("Gpg_Gen_Title"),
             Content = new ScrollViewer { Content = panel, MaxHeight = 520 },
-            PrimaryButtonText = "生成",
-            CloseButtonText = "取消",
+            PrimaryButtonText = Loc.Get("Common_Generate"),
+            CloseButtonText = Loc.Get("Common_Cancel"),
             DefaultButton = ContentDialogButton.Primary,
         };
 
@@ -498,7 +502,7 @@ public sealed partial class GpgPage : Page
 
         if (string.IsNullOrWhiteSpace(nameBox.Text))
         {
-            await DialogService.ShowMessageAsync("输入有误", "姓名不能为空。");
+            await DialogService.ShowMessageAsync(Loc.Get("Common_InvalidInput"), Loc.Get("Gpg_Gen_NameRequired"));
             return;
         }
 
@@ -521,7 +525,7 @@ public sealed partial class GpgPage : Page
             IncludeSubkey = subkeyCheck.IsChecked == true,
         };
 
-        GpgOperationReport? report = await RunAsync("生成密钥对", "generate", () => AppServices.Gpg.GenerateKey(options));
+        GpgOperationReport? report = await RunAsync(Loc.Get("Gpg_Generate"), "generate", () => AppServices.Gpg.GenerateKey(options));
         if (report is not null && report.Success)
         {
             await LoadKeysAsync();
@@ -531,7 +535,7 @@ public sealed partial class GpgPage : Page
     private async void OnImportClick(object sender, RoutedEventArgs e)
     {
         IReadOnlyList<string> paths = await FilePickerHelper.PickOpenFilesAsync(
-            "导入", ".asc", ".gpg", ".pgp", ".key", ".pub", ".txt");
+            Loc.Get("Common_Import"), ".asc", ".gpg", ".pgp", ".key", ".pub", ".txt");
         if (paths.Count == 0)
         {
             return;
@@ -555,7 +559,7 @@ public sealed partial class GpgPage : Page
             }
             catch (Exception ex)
             {
-                await DialogService.ShowErrorAsync("导入 " + Path.GetFileName(path) + " 失败", ex);
+                await DialogService.ShowErrorAsync(Loc.Format("Gpg_ImportFileFailed", Path.GetFileName(path)), ex);
             }
             finally
             {
@@ -572,13 +576,13 @@ public sealed partial class GpgPage : Page
 
         if (reports.Count == 1)
         {
-            await ShowReportAsync("导入密钥", reports[0].Report);
+            await ShowReportAsync(Loc.Get("Gpg_Import"), reports[0].Report);
             return;
         }
 
         var combined = new GpgOperationReport("import")
         {
-            Title = $"已处理 {reports.Count} 个文件",
+            Title = Loc.Format("Gpg_ProcessedFiles", reports.Count),
             Success = reports.All(r => r.Report.Success),
             Severity = reports.All(r => r.Report.Success)
                 ? GpgReportSeverity.Success
@@ -593,7 +597,7 @@ public sealed partial class GpgPage : Page
             combined.With(file, detail, report.Severity);
         }
 
-        await ShowReportAsync("导入密钥", combined);
+        await ShowReportAsync(Loc.Get("Gpg_Import"), combined);
     }
 
     private async void OnExportPublicClick(object sender, RoutedEventArgs e)
@@ -606,21 +610,21 @@ public sealed partial class GpgPage : Page
     {
         if (KeyList.SelectedItem is not GpgRow row)
         {
-            await DialogService.ShowMessageAsync(secret ? "导出私钥" : "导出公钥", "请先在列表中选择一个密钥。");
+            await DialogService.ShowMessageAsync(Loc.Get(secret ? "Gpg_ExportSecret" : "Gpg_ExportPublic"), Loc.Get("Gpg_SelectKeyFirst"));
             return;
         }
 
         GpgKey key = row.Key;
         if (secret && !key.HasSecret)
         {
-            await DialogService.ShowMessageAsync("导出私钥", "所选密钥不包含私钥，无法导出。");
+            await DialogService.ShowMessageAsync(Loc.Get("Gpg_ExportSecret"), Loc.Get("Gpg_ErrorNoSecret"));
             return;
         }
 
         string? passphrase = null;
         if (secret)
         {
-            passphrase = await DialogService.ShowPasswordAsync("导出私钥", "请输入该私钥的密码（若未设置密码则留空）：");
+            passphrase = await DialogService.ShowPasswordAsync(Loc.Get("Gpg_ExportSecret"), Loc.Get("Gpg_ExportPassphraseHint"));
             if (passphrase is null)
             {
                 return;
@@ -630,9 +634,9 @@ public sealed partial class GpgPage : Page
         string suffix = secret ? "-secret" : "-public";
         string extension = secret ? ".asc" : ".asc";
         string? path = await FilePickerHelper.PickSaveFileAsync(
-            key.ShortFingerprint + suffix, "导出",
-            (secret ? "ASCII Armor 私钥" : "ASCII Armor 公钥", new[] { ".asc" }),
-            ("二进制密钥", new[] { ".gpg" }));
+            key.ShortFingerprint + suffix, Loc.Get("Common_Export"),
+            (Loc.Get(secret ? "Gpg_ExportArmorSecret" : "Gpg_ExportArmorPublic"), new[] { ".asc" }),
+            (Loc.Get("Gpg_ExportBinaryKey"), new[] { ".gpg" }));
 
         if (path is null)
         {
@@ -652,22 +656,22 @@ public sealed partial class GpgPage : Page
 
             var report = new GpgOperationReport("export")
             {
-                Title = secret ? "私钥已导出" : "公钥已导出",
+                Title = Loc.Get(secret ? "Gpg_SecretExported" : "Gpg_PublicExported"),
                 Success = true,
                 Severity = GpgReportSeverity.Success,
             };
             if (secret)
             {
-                report.Note("请妥善保管私钥文件，并使用强密码保护。");
+                report.Note(Loc.Get("Gpg_NoteProtectSecret"));
             }
-            report.With("密钥", key.PrimaryUserId);
-            report.With("指纹", key.GroupedFingerprint);
-            report.With("输出文件", path);
-            await ShowReportAsync(secret ? "导出私钥" : "导出公钥", report);
+            report.With(Loc.Get("Gpg_Detail_Key"), key.PrimaryUserId);
+            report.With(Loc.Get("Gpg_Row_Fingerprint"), key.GroupedFingerprint);
+            report.With(Loc.Get("Gpg_Row_OutputFile"), path);
+            await ShowReportAsync(Loc.Get(secret ? "Gpg_ExportSecret" : "Gpg_ExportPublic"), report);
         }
         catch (Exception ex)
         {
-            await DialogService.ShowErrorAsync("导出失败", ex);
+            await DialogService.ShowErrorAsync(Loc.Get("Gpg_ExportFailed"), ex);
         }
         finally
         {
@@ -679,22 +683,22 @@ public sealed partial class GpgPage : Page
     {
         if (KeyList.SelectedItem is not GpgRow row)
         {
-            await DialogService.ShowMessageAsync("删除密钥", "请先在列表中选择一个密钥。");
+            await DialogService.ShowMessageAsync(Loc.Get("Gpg_DeleteKey"), Loc.Get("Gpg_SelectKeyFirst"));
             return;
         }
 
         GpgKey key = row.Key;
         bool confirmed = await DialogService.ShowConfirmAsync(
-            "删除密钥",
-            $"确定要删除以下密钥吗？此操作不可撤销。\n\n{key.PrimaryUserId}\n{key.GroupedFingerprint}" +
-            (key.HasSecret ? "\n\n警告：该密钥包含私钥，删除后将无法恢复！" : string.Empty),
-            "删除");
+            Loc.Get("Gpg_DeleteKey"),
+            Loc.Format("Gpg_ConfirmDelete", key.PrimaryUserId, key.GroupedFingerprint) +
+            (key.HasSecret ? Loc.Get("Gpg_DeleteSecretWarning") : string.Empty),
+            Loc.Get("Common_Delete"));
         if (!confirmed)
         {
             return;
         }
 
-        await RunAsync("删除密钥", "delete", () => AppServices.Gpg.DeleteKey(key.Fingerprint, key.HasSecret));
+        await RunAsync(Loc.Get("Gpg_DeleteKey"), "delete", () => AppServices.Gpg.DeleteKey(key.Fingerprint, key.HasSecret));
         await LoadKeysAsync();
     }
 
@@ -705,11 +709,11 @@ public sealed partial class GpgPage : Page
         List<GpgKey> recipients = _all.Where(k => k.CanEncrypt).ToList();
         if (recipients.Count == 0)
         {
-            await DialogService.ShowMessageAsync("加密文件", "没有可用于加密的公钥。请先生成或导入密钥。");
+            await DialogService.ShowMessageAsync(Loc.Get("Gpg_EncryptFile"), Loc.Get("Gpg_ErrorNoEncryptionKey"));
             return;
         }
 
-        string? inputPath = await FilePickerHelper.PickOpenFileAsync("选择要加密的文件", ".*");
+        string? inputPath = await FilePickerHelper.PickOpenFileAsync(Loc.Get("Gpg_PickFileToEncrypt"), ".*");
         if (inputPath is null)
         {
             return;
@@ -723,12 +727,12 @@ public sealed partial class GpgPage : Page
             Height = 200,
         };
 
-        var armorCheck = new CheckBox { Content = "输出 ASCII Armor 文本格式 (.asc)", IsChecked = true };
-        var signCheck = new CheckBox { Content = "同时签名（需要私钥）" };
-        var passphraseBox = new PasswordBox { Header = "签名私钥密码（如需要）" };
+        var armorCheck = new CheckBox { Content = Loc.Get("Gpg_EncryptArmor"), IsChecked = true };
+        var signCheck = new CheckBox { Content = Loc.Get("Gpg_EncryptSign") };
+        var passphraseBox = new PasswordBox { Header = Loc.Get("Gpg_EncryptSignPassphrase") };
 
         var panel = new StackPanel { Spacing = 8, MinWidth = 340 };
-        panel.Children.Add(new TextBlock { Text = "选择接收者（可多选）：" });
+        panel.Children.Add(new TextBlock { Text = Loc.Get("Gpg_EncryptRecipients") });
         panel.Children.Add(recipientList);
         panel.Children.Add(armorCheck);
         panel.Children.Add(signCheck);
@@ -736,10 +740,10 @@ public sealed partial class GpgPage : Page
 
         var dialog = new ContentDialog
         {
-            Title = "加密文件",
+            Title = Loc.Get("Gpg_EncryptFile"),
             Content = panel,
-            PrimaryButtonText = "下一步",
-            CloseButtonText = "取消",
+            PrimaryButtonText = Loc.Get("Common_Next"),
+            CloseButtonText = Loc.Get("Common_Cancel"),
             DefaultButton = ContentDialogButton.Primary,
         };
 
@@ -751,13 +755,13 @@ public sealed partial class GpgPage : Page
         List<GpgKey> selected = recipientList.SelectedItems.Cast<GpgKey>().ToList();
         if (selected.Count == 0)
         {
-            await DialogService.ShowMessageAsync("加密文件", "请至少选择一个接收者。");
+            await DialogService.ShowMessageAsync(Loc.Get("Gpg_EncryptFile"), Loc.Get("Gpg_ErrorNoRecipient"));
             return;
         }
 
         string extension = armorCheck.IsChecked == true ? ".asc" : ".gpg";
         string? outputPath = await FilePickerHelper.PickSaveFileAsync(
-            Path.GetFileName(inputPath) + extension, "保存加密文件", ("加密文件", new[] { extension }));
+            Path.GetFileName(inputPath) + extension, Loc.Get("Gpg_SaveEncrypted"), (Loc.Get("Gpg_EncryptFile"), new[] { extension }));
         if (outputPath is null)
         {
             return;
@@ -769,7 +773,7 @@ public sealed partial class GpgPage : Page
         List<string> fingerprints = selected.Select(k => k.Fingerprint).ToList();
 
         await RunAsync(
-            "加密文件",
+            Loc.Get("Gpg_EncryptFile"),
             "encrypt",
             () => AppServices.Gpg.EncryptFile(inputPath, outputPath, fingerprints, armor, sign, null, passphrase),
             inputPath: inputPath,
@@ -779,27 +783,27 @@ public sealed partial class GpgPage : Page
 
     private async void OnDecryptClick(object sender, RoutedEventArgs e)
     {
-        string? inputPath = await FilePickerHelper.PickOpenFileAsync("选择要解密的文件", ".asc", ".gpg", ".pgp");
+        string? inputPath = await FilePickerHelper.PickOpenFileAsync(Loc.Get("Gpg_PickFileToDecrypt"), ".asc", ".gpg", ".pgp");
         if (inputPath is null)
         {
             return;
         }
 
-        string? passphrase = await DialogService.ShowPasswordAsync("解密文件", "私钥密码（若未设置密码则留空）：");
+        string? passphrase = await DialogService.ShowPasswordAsync(Loc.Get("Gpg_DecryptFile"), Loc.Get("Gpg_DecryptPassphraseHint"));
         if (passphrase is null)
         {
             return;
         }
 
         string suggested = Path.GetFileNameWithoutExtension(inputPath);
-        string? outputPath = await FilePickerHelper.PickSaveFileAsync(suggested, "保存解密文件", ("所有文件", new[] { ".*" }));
+        string? outputPath = await FilePickerHelper.PickSaveFileAsync(suggested, Loc.Get("Gpg_SaveDecrypted"), (Loc.Get("Gpg_AllFiles"), new[] { ".*" }));
         if (outputPath is null)
         {
             return;
         }
 
         await RunAsync(
-            "解密文件",
+            Loc.Get("Gpg_DecryptFile"),
             "decrypt",
             () => AppServices.Gpg.DecryptFile(inputPath, outputPath, passphrase.Length == 0 ? null : passphrase),
             inputPath: inputPath,
@@ -811,11 +815,11 @@ public sealed partial class GpgPage : Page
         List<GpgKey> signingKeys = _all.Where(k => k.CanSign && k.HasSecret).ToList();
         if (signingKeys.Count == 0)
         {
-            await DialogService.ShowMessageAsync("签名文件", "没有可用的私钥。请先生成或导入包含私钥的密钥。");
+            await DialogService.ShowMessageAsync(Loc.Get("Gpg_SignFile"), Loc.Get("Gpg_ErrorNoSecretKey"));
             return;
         }
 
-        string? inputPath = await FilePickerHelper.PickOpenFileAsync("选择要签名的文件", ".*");
+        string? inputPath = await FilePickerHelper.PickOpenFileAsync(Loc.Get("Gpg_PickFileToSign"), ".*");
         if (inputPath is null)
         {
             return;
@@ -823,15 +827,15 @@ public sealed partial class GpgPage : Page
 
         var keyBox = new ComboBox
         {
-            Header = "签名密钥",
+            Header = Loc.Get("Gpg_SignKey"),
             ItemsSource = signingKeys,
             DisplayMemberPath = "PrimaryUserId",
             SelectedIndex = 0,
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
-        var detachedCheck = new CheckBox { Content = "生成独立签名文件 (.sig)", IsChecked = true };
-        var clearCheck = new CheckBox { Content = "生成明文签名 (clearsign)" };
-        var passphraseBox = new PasswordBox { Header = "私钥密码（若未设置密码则留空）" };
+        var detachedCheck = new CheckBox { Content = Loc.Get("Gpg_SignDetached"), IsChecked = true };
+        var clearCheck = new CheckBox { Content = Loc.Get("Gpg_SignClearsign") };
+        var passphraseBox = new PasswordBox { Header = Loc.Get("Gpg_SignPassphrase") };
 
         detachedCheck.Checked += (_, _) => { clearCheck.IsChecked = false; };
         clearCheck.Checked += (_, _) => { detachedCheck.IsChecked = false; };
@@ -844,10 +848,10 @@ public sealed partial class GpgPage : Page
 
         var dialog = new ContentDialog
         {
-            Title = "签名文件",
+            Title = Loc.Get("Gpg_SignFile"),
             Content = panel,
-            PrimaryButtonText = "下一步",
-            CloseButtonText = "取消",
+            PrimaryButtonText = Loc.Get("Common_Next"),
+            CloseButtonText = Loc.Get("Common_Cancel"),
             DefaultButton = ContentDialogButton.Primary,
         };
 
@@ -865,7 +869,7 @@ public sealed partial class GpgPage : Page
         bool clear = clearCheck.IsChecked == true;
         string extension = detached ? ".sig" : clear ? ".asc" : ".gpg";
         string? outputPath = await FilePickerHelper.PickSaveFileAsync(
-            Path.GetFileName(inputPath) + extension, "保存签名", ("签名文件", new[] { extension }));
+            Path.GetFileName(inputPath) + extension, Loc.Get("Gpg_SaveSignature"), (Loc.Get("Gpg_SignFile"), new[] { extension }));
         if (outputPath is null)
         {
             return;
@@ -874,7 +878,7 @@ public sealed partial class GpgPage : Page
         string? passphrase = string.IsNullOrEmpty(passphraseBox.Password) ? null : passphraseBox.Password;
 
         await RunAsync(
-            "签名文件",
+            Loc.Get("Gpg_SignFile"),
             "sign",
             () => AppServices.Gpg.SignFile(inputPath, outputPath, detached, armor: true, signingKey.Fingerprint, passphrase, clear),
             inputPath: inputPath,
@@ -883,16 +887,16 @@ public sealed partial class GpgPage : Page
 
     private async void OnVerifyClick(object sender, RoutedEventArgs e)
     {
-        string? signaturePath = await FilePickerHelper.PickOpenFileAsync("选择签名文件", ".sig", ".asc", ".gpg", ".pgp");
+        string? signaturePath = await FilePickerHelper.PickOpenFileAsync(Loc.Get("Gpg_PickSignatureFile"), ".sig", ".asc", ".gpg", ".pgp");
         if (signaturePath is null)
         {
             return;
         }
 
-        string? dataPath = await FilePickerHelper.PickOpenFileAsync("选择被签名的原始文件（若非独立签名可取消）", ".*");
+        string? dataPath = await FilePickerHelper.PickOpenFileAsync(Loc.Get("Gpg_PickSignedData"), ".*");
 
         await RunAsync(
-            "签名验证结果",
+            Loc.Get("Gpg_VerifyResult"),
             "verify",
             () => AppServices.Gpg.VerifyFile(signaturePath, dataPath),
             inputPath: signaturePath);

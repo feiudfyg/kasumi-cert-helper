@@ -1,5 +1,7 @@
 namespace KasumiCertHelper.Core.Models;
 
+using KasumiCertHelper.Core.Localization;
+
 public sealed class GpgUid
 {
     public string Value { get; set; } = string.Empty;
@@ -8,18 +10,18 @@ public sealed class GpgUid
 
     public bool IsPrimary { get; set; }
 
-    public string ValidityText => Validity switch
+    public string ValidityText => Loc.Get(Validity switch
     {
-        "u" => "最终信任",
-        "f" => "完全信任",
-        "m" => "部分信任",
-        "n" => "不信任",
-        "r" => "已吊销",
-        "e" => "已过期",
-        "d" => "已禁用",
-        "i" => "无效",
-        _ => "未知",
-    };
+        "u" => "Gpg_Validity_Ultimate",
+        "f" => "Gpg_Validity_Full",
+        "m" => "Gpg_Validity_Marginal",
+        "n" => "Gpg_Validity_Never",
+        "r" => "Gpg_Validity_Revoked",
+        "e" => "Gpg_Validity_Expired",
+        "d" => "Gpg_Validity_Disabled",
+        "i" => "Gpg_Validity_Invalid",
+        _ => "Gpg_Validity_Unknown",
+    });
 
     public override string ToString() => Value;
 }
@@ -106,10 +108,10 @@ public sealed class GpgKey
     {
         get
         {
-            if (IsRevoked) return "已吊销";
-            if (IsExpired) return "已过期";
-            if (IsDisabled) return "已禁用";
-            return "有效";
+            if (IsRevoked) return Loc.Get("Gpg_State_Revoked");
+            if (IsExpired) return Loc.Get("Gpg_State_Expired");
+            if (IsDisabled) return Loc.Get("Gpg_State_Disabled");
+            return Loc.Get("Gpg_State_Valid");
         }
     }
 
@@ -148,11 +150,11 @@ public sealed class GpgKey
 
     public string AlgorithmAndLength => AlgorithmText;
 
-    public string SecretText => HasSecret ? "含私钥" : "公钥";
+    public string SecretText => Loc.Get(HasSecret ? "Gpg_HasSecret" : "Gpg_PublicKey");
 
     public string CreatedText => Created?.ToString("yyyy-MM-dd") ?? string.Empty;
 
-    public string ExpiresText => Expires?.ToString("yyyy-MM-dd") ?? "永不过期";
+    public string ExpiresText => Expires?.ToString("yyyy-MM-dd") ?? Loc.Get("Gpg_NeverExpires");
 
     public override string ToString() => $"{PrimaryUserId} — {ShortFingerprint}";
 }

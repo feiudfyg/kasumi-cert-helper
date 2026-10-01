@@ -11,4 +11,13 @@
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!--
+      One JSON table per supported language, see KasumiCertHelper.Core.Localization.Loc.
+      WithCulture=false is required: without it MSBuild reads the ".en." / ".zh-CN." part of the
+      file name as a satellite-assembly culture and silently drops the resource from the assembly.
+    -->
+    <EmbeddedResource Include="Localization\Strings.*.json" WithCulture="false" />
+  </ItemGroup>
+
 </Project>

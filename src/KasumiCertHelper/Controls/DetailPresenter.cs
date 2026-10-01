@@ -1,3 +1,4 @@
+using KasumiCertHelper.Core.Localization;
 using KasumiCertHelper.Core.Models;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
@@ -48,64 +49,64 @@ public static class DetailPresenter
 
         var basic = new List<DetailItem>
         {
-            new("Subject", "使用者", summary.Subject, Monospace: false),
-            new("SubjectCn", "常用名 (CN)", summary.SubjectCommonName),
-            new("Issuer", "颁发者", summary.Issuer),
-            new("IssuerCn", "颁发者 CN", summary.IssuerCommonName),
-            new("Serial", "序列号", summary.SerialNumber, Monospace: true),
-            new("Version", "版本", "V" + summary.Version),
-            new("Thumbprint", "指纹 (SHA-1)", summary.ThumbprintSha1, Monospace: true),
-            new("Thumbprint256", "指纹 (SHA-256)", summary.ThumbprintSha256, Monospace: true),
-            new("FriendlyName", "友好名称", summary.FriendlyName),
+            new("Subject", Loc.Get("Cert_Row_Subject"), summary.Subject, Monospace: false),
+            new("SubjectCn", Loc.Get("Cert_Row_SubjectCn"), summary.SubjectCommonName),
+            new("Issuer", Loc.Get("Cert_Row_Issuer"), summary.Issuer),
+            new("IssuerCn", Loc.Get("Cert_Row_IssuerCn"), summary.IssuerCommonName),
+            new("Serial", Loc.Get("Cert_Row_Serial"), summary.SerialNumber, Monospace: true),
+            new("Version", Loc.Get("Cert_Row_Version"), "V" + summary.Version),
+            new("Thumbprint", Loc.Get("Cert_Row_ThumbprintSha1"), summary.ThumbprintSha1, Monospace: true),
+            new("Thumbprint256", Loc.Get("Cert_Row_ThumbprintSha256"), summary.ThumbprintSha256, Monospace: true),
+            new("FriendlyName", Loc.Get("Cert_Row_FriendlyName"), summary.FriendlyName),
         };
 
         var validity = new List<DetailItem>
         {
-            new("NotBefore", "生效时间", summary.NotBefore == default ? string.Empty : summary.NotBefore.ToString("yyyy-MM-dd HH:mm:ss")),
-            new("NotAfter", "过期时间", summary.NotAfter == default ? string.Empty : summary.NotAfter.ToString("yyyy-MM-dd HH:mm:ss")),
-            new("Validity", "状态", summary.ValidityText),
+            new("NotBefore", Loc.Get("Cert_Row_NotBefore"), summary.NotBefore == default ? string.Empty : summary.NotBefore.ToString("yyyy-MM-dd HH:mm:ss")),
+            new("NotAfter", Loc.Get("Cert_Row_NotAfter"), summary.NotAfter == default ? string.Empty : summary.NotAfter.ToString("yyyy-MM-dd HH:mm:ss")),
+            new("Validity", Loc.Get("Cert_Row_Status"), summary.ValidityText),
         };
 
         var key = new List<DetailItem>
         {
-            new("PublicKeyAlgorithm", "公钥算法", summary.PublicKeyAlgorithm),
-            new("KeySize", "密钥长度", summary.KeySize > 0 ? summary.KeySize + " bit" : string.Empty),
-            new("HasPrivateKey", "私钥", summary.HasPrivateKey ? "存在" : "不存在"),
-            new("SignatureAlgorithm", "签名算法", summary.SignatureAlgorithm),
+            new("PublicKeyAlgorithm", Loc.Get("Gpg_Row_PublicKeyAlgorithm"), summary.PublicKeyAlgorithm),
+            new("KeySize", Loc.Get("Cert_Row_KeySize"), summary.KeySize > 0 ? summary.KeySize + " bit" : string.Empty),
+            new("HasPrivateKey", Loc.Get("Cert_Row_PrivateKey"), Loc.Get(summary.HasPrivateKey ? "Cert_Value_Present" : "Cert_Value_Absent")),
+            new("SignatureAlgorithm", Loc.Get("Cert_Row_SignatureAlgorithm"), summary.SignatureAlgorithm),
         };
 
         var extensions = new List<DetailItem>
         {
-            new("IsCa", "CA 证书", summary.IsCertificateAuthority ? "是" : "否"),
-            new("PathLength", "路径长度约束", summary.PathLengthConstraint?.ToString() ?? "无"),
-            new("KeyUsage", "密钥用法", summary.KeyUsageText),
-            new("Eku", "增强密钥用法", Join(summary.EnhancedKeyUsages)),
-            new("San", "使用者可选名称", Join(summary.SubjectAlternativeNames)),
-            new("Ski", "使用者密钥标识 (SKI)", summary.SubjectKeyIdentifier, Monospace: true),
-            new("Aki", "颁发者密钥标识 (AKI)", summary.AuthorityKeyIdentifier, Monospace: true),
-            new("Crl", "CRL 分发点", Join(summary.CrlDistributionPoints)),
-            new("Aia", "颁发机构信息访问", Join(summary.AuthorityInformationAccess)),
-            new("Policies", "证书策略", Join(summary.CertificatePolicies)),
-            new("OtherExtensions", "其他扩展", Join(summary.OtherExtensions)),
+            new("IsCa", Loc.Get("Cert_Row_IsCa"), Loc.Get(summary.IsCertificateAuthority ? "Common_Yes" : "Common_No")),
+            new("PathLength", Loc.Get("Cert_Row_PathLength"), summary.PathLengthConstraint?.ToString() ?? Loc.Get("Common_None")),
+            new("KeyUsage", Loc.Get("Cert_Row_KeyUsage"), summary.KeyUsageText),
+            new("Eku", Loc.Get("Cert_Row_Eku"), Join(summary.EnhancedKeyUsages)),
+            new("San", Loc.Get("Cert_Row_San"), Join(summary.SubjectAlternativeNames)),
+            new("Ski", Loc.Get("Cert_Row_Ski"), summary.SubjectKeyIdentifier, Monospace: true),
+            new("Aki", Loc.Get("Cert_Row_Aki"), summary.AuthorityKeyIdentifier, Monospace: true),
+            new("Crl", Loc.Get("Cert_Row_Crl"), Join(summary.CrlDistributionPoints)),
+            new("Aia", Loc.Get("Cert_Row_Aia"), Join(summary.AuthorityInformationAccess)),
+            new("Policies", Loc.Get("Cert_Row_Policies"), Join(summary.CertificatePolicies)),
+            new("OtherExtensions", Loc.Get("Cert_Row_OtherExtensions"), Join(summary.OtherExtensions)),
         };
 
         var raw = new List<DetailItem>
         {
-            new("RawReport", "文本报告", summary.RawTextReport, Monospace: true),
+            new("RawReport", Loc.Get("Cert_Row_RawReport"), summary.RawTextReport, Monospace: true),
         };
 
         return new[]
         {
-            new DetailSection("基本信息", basic, Expanded: true),
-            new DetailSection("有效期", validity, Expanded: true),
-            new DetailSection("公钥与签名", key),
-            new DetailSection("扩展", extensions),
-            new DetailSection("原始文本报告", raw),
+            new DetailSection(Loc.Get("Detail_Section_Basic"), basic, Expanded: true),
+            new DetailSection(Loc.Get("Detail_Section_Validity"), validity, Expanded: true),
+            new DetailSection(Loc.Get("Detail_Section_Key"), key),
+            new DetailSection(Loc.Get("Detail_Section_Extensions"), extensions),
+            new DetailSection(Loc.Get("Detail_Section_Raw"), raw),
         };
     }
 
     private static string Join(IReadOnlyList<string> values)
-        => values.Count == 0 ? "无" : string.Join("；", values);
+        => values.Count == 0 ? Loc.Get("Common_None") : string.Join(Loc.Get("Common_SentenceSeparator"), values);
 
     private static UIElement BuildGrid(IReadOnlyList<DetailItem> items)
     {

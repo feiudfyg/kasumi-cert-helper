@@ -17,6 +17,12 @@ public sealed class SettingsService
 
     public string? LastDirectory { get; set; }
 
+    /// <summary>
+    /// Language code such as <c>en</c> or <c>zh-CN</c>. <c>null</c> or empty means "follow the
+    /// Windows display language", which is the default.
+    /// </summary>
+    public string? Language { get; set; }
+
     public List<string> RecentDatabases { get; set; } = new();
 
     /// <summary>
