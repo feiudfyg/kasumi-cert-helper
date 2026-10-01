@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="KasumiCertHelper.Views.SettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <ScrollViewer Padding="24">
+        <StackPanel Spacing="18" MaxWidth="860" HorizontalAlignment="Left">
+
+            <TextBlock Text="设置" FontSize="26" FontWeight="SemiBold" />
+
+            <StackPanel Spacing="8">
+                <TextBlock Text="GnuPG" FontSize="18" FontWeight="SemiBold" />
+                <TextBlock Text="用于 GPG 密钥管理与加解密操作的可执行文件。" TextWrapping="Wrap"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                <Grid ColumnSpacing="8" RowSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBox x:Name="GpgPathBox" Grid.Row="0" Grid.Column="0" Header="gpg.exe 路径" />
+                    <Button x:Name="BrowseGpgButton" Grid.Row="0" Grid.Column="1" Content="浏览..." Click="OnBrowseGpgClick" VerticalAlignment="Bottom" />
+                    <Button x:Name="DetectGpgButton" Grid.Row="0" Grid.Column="2" Content="自动检测" Click="OnDetectGpgClick" VerticalAlignment="Bottom" />
+                    <TextBox x:Name="GpgHomeBox" Grid.Row="1" Grid.Column="0" Header="GnuPG 主目录（可选，留空使用默认 %APPDATA%\gnupg）" />
+                    <Button x:Name="BrowseHomeButton" Grid.Row="1" Grid.Column="1" Content="浏览..." Click="OnBrowseHomeClick" VerticalAlignment="Bottom" />
+                </Grid>
+                <TextBlock x:Name="GpgVersionText" TextWrapping="Wrap" FontFamily="Consolas" FontSize="12"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                <TextBlock x:Name="GpgOriginText" TextWrapping="Wrap" FontSize="12"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button x:Name="SaveGpgButton" Content="保存并应用" Click="OnSaveGpgClick" Style="{ThemeResource AccentButtonStyle}" />
+                    <Button x:Name="CheckGpgButton" Content="测试连接" Click="OnCheckGpgClick" />
+                </StackPanel>
+            </StackPanel>
+
+            <StackPanel Spacing="8">
+                <TextBlock Text="证书存储" FontSize="18" FontWeight="SemiBold" />
+                <TextBlock x:Name="ElevationText" TextWrapping="Wrap" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button x:Name="ElevateButton" Content="以管理员身份重启" Click="OnElevateClick" />
+                    <Button x:Name="OpenCertMgrButton" Content="打开 certmgr.msc" Click="OnOpenCertMgrClick" />
+                </StackPanel>
+            </StackPanel>
+
+            <StackPanel Spacing="8">
+                <TextBlock Text="证书数据库" FontSize="18" FontWeight="SemiBold" />
+                <TextBlock x:Name="DatabaseText" TextWrapping="Wrap"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+            </StackPanel>
+
+            <StackPanel Spacing="8">
+                <TextBlock Text="关于" FontSize="18" FontWeight="SemiBold" />
+                <TextBlock x:Name="AboutText" TextWrapping="Wrap" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button x:Name="OpenLogFolderButton" Content="打开日志目录" Click="OnOpenLogFolderClick" />
+                    <Button x:Name="OpenAppDataButton" Content="打开配置目录" Click="OnOpenAppDataClick" />
+                </StackPanel>
+            </StackPanel>
+
+        </StackPanel>
+    </ScrollViewer>
+</Page>

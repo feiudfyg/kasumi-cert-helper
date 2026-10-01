@@ -1,0 +1,66 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>KasumiCertHelper</RootNamespace>
+    <AssemblyName>KasumiCertHelper</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Platforms>x64</Platforms>
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <UseWinUI>true</UseWinUI>
+    <WinUISDKReferences>false</WinUISDKReferences>
+    <EnableMsixTooling>false</EnableMsixTooling>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <SelfContained>false</SelfContained>
+    <PublishTrimmed>False</PublishTrimmed>
+    <PublishReadyToRun>False</PublishReadyToRun>
+    <EnableDefaultPageItems>true</EnableDefaultPageItems>
+
+    <!--
+      A private copy of GnuPG can be shipped next to the app so the GPG page works on machines
+      without gpg4win. Point GnupgBundleSource at a GnuPG (or Gpg4win) installation, or set
+      BundleGnupg=false to rely on a system wide installation instead.
+    -->
+    <BundleGnupg Condition="'$(BundleGnupg)' == ''">true</BundleGnupg>
+    <GnupgBundleSource Condition="'$(GnupgBundleSource)' == '' AND Exists('$(ProgramFiles)\GnuPG\bin\gpg.exe')">$(ProgramFiles)\GnuPG\</GnupgBundleSource>
+    <GnupgBundleSource Condition="'$(GnupgBundleSource)' == '' AND Exists('$(ProgramFilesX86)\GnuPG\bin\gpg.exe')">$(ProgramFilesX86)\GnuPG\</GnupgBundleSource>
+    <GnupgBundleSource Condition="'$(GnupgBundleSource)' == '' AND Exists('D:\GnuPG\bin\gpg.exe')">D:\GnuPG\</GnupgBundleSource>
+    <GnupgBundleSource Condition="'$(GnupgBundleSource)' == '' AND Exists('C:\GnuPG\bin\gpg.exe')">C:\GnuPG\</GnupgBundleSource>
+    <GnupgBundleSource Condition="'$(GnupgBundleSource)' == '' AND Exists('$(ProgramFiles)\Gpg4win\bin\gpg.exe')">$(ProgramFiles)\Gpg4win\</GnupgBundleSource>
+  </PropertyGroup>
+
+  <Target Name="CopyGnupgBundle" AfterTargets="Build"
+          Condition="'$(BundleGnupg)' == 'true' AND '$(GnupgBundleSource)' != '' AND Exists('$(GnupgBundleSource)bin')">
+    <ItemGroup>
+      <GnupgBundleFiles Include="$(GnupgBundleSource)bin\*.exe;$(GnupgBundleSource)bin\*.dll" />
+      <GnupgLicenseFiles Include="$(GnupgBundleSource)COPYING*;$(GnupgBundleSource)share\doc\gnupg\COPYING*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(GnupgBundleFiles)" DestinationFolder="$(OutDir)gpg\bin\"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(GnupgLicenseFiles)" DestinationFolder="$(OutDir)gpg\"
+          SkipUnchangedFiles="true" ContinueOnError="true" />
+    <Message Importance="normal" Text="已内置 GnuPG：$(GnupgBundleSource) → $(OutDir)gpg\bin" />
+  </Target>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260921001" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.4654" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\KasumiCertHelper.Core\KasumiCertHelper.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Manifest Include="$(ApplicationManifest)" />
+  </ItemGroup>
+
+</Project>

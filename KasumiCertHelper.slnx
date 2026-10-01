@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/KasumiCertHelper.Core/KasumiCertHelper.Core.csproj" />
+    <Project Path="src/KasumiCertHelper/KasumiCertHelper.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/KasumiCertHelper.Core.Tests/KasumiCertHelper.Core.Tests.csproj" />
+    <Project Path="tests/KasumiCertHelper.UiTests/KasumiCertHelper.UiTests.csproj">
+      <Platform Project="x64" />
+    </Project>
+  </Folder>
+</Solution>
