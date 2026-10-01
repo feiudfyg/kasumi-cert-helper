@@ -18,13 +18,17 @@ public static class AppServices
 
     public static SettingsService Settings { get; private set; } = new();
 
-    public static GpgService Gpg { get; private set; } = new();
+    /// <summary>
+    /// OpenPGP keys live in plain armored files (<c>%APPDATA%\KasumiCertHelper\pgp\keys</c>) so they can
+    /// be copied into and out of a GnuPG keyring by hand. Cryptography runs in process, no gpg.exe.
+    /// </summary>
+    public static OpenPgpKeyStore Pgp { get; private set; } = new(DefaultPgpDirectory);
 
     public static X509Database? Database { get; private set; }
 
     public static event EventHandler? DatabaseChanged;
 
-    public static event EventHandler? GpgChanged;
+    public static string PgpDirectory => Pgp.Directory;
 
     public static void Initialize()
     {
@@ -49,16 +53,11 @@ public static class AppServices
             Loc.SetCulture(Settings.Language);
         }
 
-        Gpg = new GpgService(
-            string.IsNullOrWhiteSpace(Settings.GpgExecutablePath) ? GpgService.AutoDetect() : Settings.GpgExecutablePath,
-            Settings.GpgHomeDirectory);
-
-        if (string.IsNullOrWhiteSpace(Settings.GpgExecutablePath) && Gpg.IsAvailable)
-        {
-            Settings.GpgExecutablePath = Gpg.ExecutablePath;
-            Settings.Save();
-        }
+        Pgp = new OpenPgpKeyStore(DefaultPgpDirectory);
+        Log($"OpenPGP: directory={Pgp.Directory} keys={Pgp.List().Count} lang={Loc.Culture}");
     }
+
+    private static string DefaultPgpDirectory => Path.Combine(AppDataDirectory, "pgp", "keys");
 
     public static void SetDatabase(X509Database? database)
     {
@@ -84,12 +83,6 @@ public static class AppServices
             Settings.RecentDatabases.RemoveAt(Settings.RecentDatabases.Count - 1);
         }
         Settings.Save();
-    }
-
-    public static void ReinitializeGpg()
-    {
-        Gpg = new GpgService(Settings.GpgExecutablePath, Settings.GpgHomeDirectory);
-        GpgChanged?.Invoke(null, EventArgs.Empty);
     }
 
     public static void Log(string message)

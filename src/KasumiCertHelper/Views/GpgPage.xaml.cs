@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.Text;
 using KasumiCertHelper.Controls;
 using KasumiCertHelper.Core.Models;
 using KasumiCertHelper.Core.Services;
@@ -7,6 +9,7 @@ using KasumiCertHelper.ViewModels;
 using KasumiCertHelper.Core.Localization;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Windows.ApplicationModel.DataTransfer;
@@ -22,7 +25,7 @@ public sealed partial class GpgPage : Page
     private const string ListPaneKey = "Gpg.ListPaneWidth";
 
     private readonly ObservableCollection<GpgRow> _visible = new();
-    private List<GpgKey> _all = new();
+    private List<OpenPgpStoredKey> _all = new();
     private bool _initialized;
 
     public GpgPage()
@@ -37,6 +40,8 @@ public sealed partial class GpgPage : Page
     public TableColumnLayout Columns { get; } = new(52, 250, 110, 100, 56);
 
     private SettingsService Settings => AppServices.Settings;
+
+    private OpenPgpKeyStore Store => AppServices.Pgp;
 
     private void ApplyStoredLayout()
     {
@@ -82,56 +87,20 @@ public sealed partial class GpgPage : Page
         _initialized = true;
 
         UpdateDetails(null);
-        UpdateGpgState();
         await LoadKeysAsync();
-    }
-
-    private void UpdateGpgState()
-    {
-        GpgService gpg = AppServices.Gpg;
-        GpgInfoBar.IsOpen = !gpg.IsAvailable;
-
-        if (!gpg.IsAvailable)
-        {
-            DetailStatusText.Text = Loc.Get("Gpg_DetailGpgMissing");
-            return;
-        }
-
-        string origin = Loc.Get(gpg.IsBundled ? "Gpg_OriginBundled" : "Gpg_OriginSystem");
-        string version = string.Empty;
-        try
-        {
-            version = gpg.GetVersion();
-        }
-        catch (Exception ex)
-        {
-            AppServices.Log(Loc.Format("Gpg_LogReadVersionFailed", ex.Message));
-        }
-
-        DetailStatusText.Text = string.IsNullOrWhiteSpace(version)
-            ? Loc.Format("Gpg_OriginLine", origin, gpg.ExecutablePath)
-            : $"{version}（{origin}）";
-        ToolTipService.SetToolTip(GpgInfoBar, gpg.ExecutablePath);
     }
 
     private async Task LoadKeysAsync()
     {
-        if (!AppServices.Gpg.IsAvailable)
-        {
-            _all = new List<GpgKey>();
-            ApplyFilter();
-            return;
-        }
-
         try
         {
             BusyRing.IsActive = true;
-            GpgService gpg = AppServices.Gpg;
-            _all = await Task.Run(() => gpg.ListAllKeys().ToList());
+            OpenPgpKeyStore store = Store;
+            _all = await Task.Run(() => store.List().ToList());
         }
         catch (Exception ex)
         {
-            _all = new List<GpgKey>();
+            _all = new List<OpenPgpStoredKey>();
             await DialogService.ShowErrorAsync(Loc.Get("Gpg_ErrorListKeys"), ex);
         }
         finally
@@ -139,7 +108,15 @@ public sealed partial class GpgPage : Page
             BusyRing.IsActive = false;
         }
 
+        UpdateEngineState();
         ApplyFilter();
+    }
+
+    /// <summary>Shows how many keys the in-process store holds and where they live.</summary>
+    private void UpdateEngineState()
+    {
+        DetailStatusText.Text = Loc.Format("Gpg_EngineLine", _all.Count, Store.Directory);
+        ToolTipService.SetToolTip(DetailStatusText, Store.Directory);
     }
 
     private void ApplyFilter()
@@ -149,10 +126,10 @@ public sealed partial class GpgPage : Page
             return;
         }
 
-        IEnumerable<GpgKey> filtered = FilterBox.SelectedIndex switch
+        IEnumerable<OpenPgpStoredKey> filtered = FilterBox.SelectedIndex switch
         {
-            1 => _all.Where(k => k.HasSecret),
-            2 => _all.Where(k => !k.HasSecret),
+            1 => _all.Where(k => k.HasSecretKey),
+            2 => _all.Where(k => !k.HasSecretKey),
             _ => _all,
         };
 
@@ -160,14 +137,13 @@ public sealed partial class GpgPage : Page
         if (query.Length > 0)
         {
             filtered = filtered.Where(k =>
-                k.PrimaryUserId.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                k.UserId.Contains(query, StringComparison.OrdinalIgnoreCase) ||
                 k.Fingerprint.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-                k.KeyId.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-                k.UserIds.Any(u => u.Value.Contains(query, StringComparison.OrdinalIgnoreCase)));
+                k.KeyId.Contains(query, StringComparison.OrdinalIgnoreCase));
         }
 
         _visible.Clear();
-        foreach (GpgKey key in filtered)
+        foreach (OpenPgpStoredKey key in filtered)
         {
             _visible.Add(new GpgRow(key, Columns));
         }
@@ -182,11 +158,9 @@ public sealed partial class GpgPage : Page
         }
 
         KeyEmptyState.Visibility = _visible.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-        KeyEmptyText.Text = !AppServices.Gpg.IsAvailable
-            ? Loc.Get("Gpg_NoKeysGpgMissing")
-            : _all.Count == 0
-                ? Loc.Get("Gpg_NoKeysEmpty")
-                : Loc.Get("Gpg_NoKeysFiltered");
+        KeyEmptyText.Text = _all.Count == 0
+            ? Loc.Get("Gpg_NoKeysEmpty")
+            : Loc.Get("Gpg_NoKeysFiltered");
     }
 
     private void OnSearchTextChanged(object sender, TextChangedEventArgs e) => ApplyFilter();
@@ -196,7 +170,7 @@ public sealed partial class GpgPage : Page
     private void OnKeySelectionChanged(object sender, SelectionChangedEventArgs e)
         => UpdateDetails((KeyList.SelectedItem as GpgRow)?.Key);
 
-    private void UpdateDetails(GpgKey? key)
+    private void UpdateDetails(OpenPgpStoredKey? key)
     {
         if (key is null)
         {
@@ -206,98 +180,35 @@ public sealed partial class GpgPage : Page
             return;
         }
 
-        DetailTitle.Text = key.PrimaryUserId;
+        DetailTitle.Text = key.UserId;
         DetailEmptyState.Visibility = Visibility.Collapsed;
         DetailPresenter.Render(DetailPanel, BuildKeySections(key));
     }
 
-    private static List<DetailSection> BuildKeySections(GpgKey key)
+    private static List<DetailSection> BuildKeySections(OpenPgpStoredKey key)
     {
         var basic = new List<DetailItem>
         {
             new("Fingerprint", Loc.Get("Gpg_Row_Fingerprint"), key.GroupedFingerprint, Monospace: true),
             new("KeyId", Loc.Get("Gpg_Row_KeyId"), key.KeyId),
             new("Algorithm", Loc.Get("Gpg_HeaderAlgorithm"), key.AlgorithmText),
-            new("Curve", Loc.Get("Gpg_Detail_Curve"), key.Curve),
-            new("Created", Loc.Get("X509_Detail_Created"), key.Created?.ToString("yyyy-MM-dd HH:mm:ss") ?? string.Empty),
+            new("Created", Loc.Get("X509_Detail_Created"), key.Created.ToString("yyyy-MM-dd HH:mm:ss")),
             new("Expires", Loc.Get("Cert_Row_NotAfter"), key.Expires is null ? Loc.Get("Gpg_NeverExpires") : key.Expires.Value.ToString("yyyy-MM-dd HH:mm:ss")),
             new("Status", Loc.Get("Cert_Row_Status"), key.StatusText),
-            new("Capabilities", Loc.Get("Gpg_Detail_Capabilities"), DescribeCapabilities(key.Capabilities)),
-            new("Secret", Loc.Get("Cert_Row_PrivateKey"), Loc.Get(key.HasSecret ? "Gpg_Detail_SecretPresent" : "Gpg_Detail_SecretAbsent")),
+            new("Capabilities", Loc.Get("Gpg_Detail_Capabilities"), key.CapabilitiesText),
+            new("Secret", Loc.Get("Cert_Row_PrivateKey"), key.SecretText),
+            new("Storage", Loc.Get("Gpg_Detail_Storage"), Loc.Get(key.IsSecretProtected ? "Gpg_Detail_SecretProtected" : "Gpg_Detail_SecretUnprotected")),
+            new("Note", Loc.Get("X509Dlg_Comment"), key.Note ?? string.Empty),
         };
-
-        var uids = new List<DetailItem>();
-        for (int i = 0; i < key.UserIds.Count; i++)
-        {
-            GpgUid uid = key.UserIds[i];
-            uids.Add(new DetailItem(
-                "Uid" + i,
-                Loc.Get(uid.IsPrimary ? "Gpg_Detail_PrimaryUid" : "Gpg_Detail_Uid") + (uid.IsPrimary ? string.Empty : (i + 1).ToString()),
-                $"{uid.Value}　[{uid.ValidityText}]"));
-        }
-
-        var subkeys = new List<DetailItem>();
-        for (int i = 0; i < key.Subkeys.Count; i++)
-        {
-            GpgSubkey subkey = key.Subkeys[i];
-            var parts = new List<string>
-            {
-                subkey.AlgorithmText,
-                Loc.Get("Gpg_Detail_CapabilitiesPrefix") + DescribeCapabilities(subkey.Capabilities),
-                Loc.Get(subkey.HasSecret ? "Gpg_HasSecret" : "Gpg_PublicKeyOnly"),
-                subkey.Expires is null ? Loc.Get("Gpg_NeverExpires") : Loc.Get("Gpg_Detail_ValidUntil") + subkey.Expires.Value.ToString("yyyy-MM-dd"),
-            };
-            subkeys.Add(new DetailItem("Sub" + i, Loc.Format("Gpg_Detail_Subkey", i + 1), string.Join(Loc.Get("Common_SentenceSeparator"), parts) + "\n" + subkey.Fingerprint, Monospace: true));
-        }
 
         return new List<DetailSection>
         {
             new(Loc.Get("Detail_Section_Basic"), basic, Expanded: true),
-            new(Loc.Get("Gpg_Detail_UidSection"), uids, Expanded: true),
-            new(Loc.Get("Gpg_Detail_SubkeysSection"), subkeys),
+            new(Loc.Get("Gpg_Detail_PublicKeySection"), new[]
+            {
+                new DetailItem("PublicArmor", Loc.Get("X509_Detail_PublicKeyPem"), key.PublicKeyArmor, Monospace: true),
+            }),
         };
-    }
-
-    private static string DescribeCapabilities(string capabilities)
-    {
-        if (string.IsNullOrWhiteSpace(capabilities))
-        {
-            return Loc.Get("Gpg_Validity_Unknown");
-        }
-
-        var usable = new SortedSet<string>(StringComparer.Ordinal);
-        var unavailable = new SortedSet<string>(StringComparer.Ordinal);
-
-        foreach (char c in capabilities)
-        {
-            string? text = char.ToLowerInvariant(c) switch
-            {
-                'e' => Loc.Get("Gpg_Capability_Encrypt"),
-                's' => Loc.Get("Gpg_Capability_Sign"),
-                'c' => Loc.Get("Gpg_Capability_Certify"),
-                'a' => Loc.Get("Gpg_Capability_Authenticate"),
-                _ => null,
-            };
-
-            if (text is not null)
-            {
-                (char.IsUpper(c) ? usable : unavailable).Add(text);
-            }
-        }
-
-        unavailable.ExceptWith(usable);
-
-        var parts = new List<string>();
-        if (usable.Count > 0)
-        {
-            parts.Add(Loc.Format("Gpg_CapabilitiesUsable", string.Join(Loc.Get("Common_ListSeparator"), usable)));
-        }
-        if (unavailable.Count > 0)
-        {
-            parts.Add(Loc.Format("Gpg_CapabilitiesUnavailable", string.Join(Loc.Get("Common_ListSeparator"), unavailable)));
-        }
-
-        return parts.Count == 0 ? capabilities : string.Join(Loc.Get("Common_SentenceSeparator"), parts);
     }
 
     // ---------------------------------------------------------------- context menu
@@ -312,10 +223,10 @@ public sealed partial class GpgPage : Page
         KeyList.SelectedItem = row;
         var flyout = new MenuFlyout();
         flyout.Items.Add(BuildMenuItem(Loc.Get("Gpg_CopyFingerprint"), "\uE8C8", () => CopyToClipboard(row.Key.GroupedFingerprint)));
-        flyout.Items.Add(BuildMenuItem(Loc.Get("Gpg_MenuCopyUserId"), "\uE8C8", () => CopyToClipboard(row.Key.PrimaryUserId)));
+        flyout.Items.Add(BuildMenuItem(Loc.Get("Gpg_MenuCopyUserId"), "\uE8C8", () => CopyToClipboard(row.Key.UserId)));
         flyout.Items.Add(new MenuFlyoutSeparator());
         flyout.Items.Add(BuildMenuItem(Loc.Get("Gpg_MenuExportPublic"), "\uE898", () => OnExportPublicClick(this, new RoutedEventArgs())));
-        if (row.Key.HasSecret)
+        if (row.Key.HasSecretKey)
         {
             flyout.Items.Add(BuildMenuItem(Loc.Get("Gpg_MenuExportSecret"), "\uE72E", () => OnExportSecretClick(this, new RoutedEventArgs())));
         }
@@ -357,25 +268,12 @@ public sealed partial class GpgPage : Page
 
     // ---------------------------------------------------------------- operation plumbing
 
-    private async Task<GpgOperationReport?> RunAsync(
-        string title,
-        string operation,
-        Func<GpgResult> action,
-        string? inputPath = null,
-        string? outputPath = null,
-        IReadOnlyList<string>? recipients = null)
+    private async Task<GpgOperationReport?> RunAsync(string title, Func<GpgOperationReport> action)
     {
-        if (!AppServices.Gpg.IsAvailable)
-        {
-            await DialogService.ShowMessageAsync(Loc.Get("Gpg_NotFoundTitle"), Loc.Get("Gpg_NotFoundMessageLong"));
-            return null;
-        }
-
         try
         {
             BusyRing.IsActive = true;
-            GpgResult result = await Task.Run(action);
-            GpgOperationReport report = GpgOutputInterpreter.Describe(result, operation, inputPath, outputPath, recipients);
+            GpgOperationReport report = await Task.Run(action);
             await ShowReportAsync(title, report);
             return report;
         }
@@ -408,27 +306,29 @@ public sealed partial class GpgPage : Page
         await DialogService.ShowAsync(dialog);
     }
 
+    private static GpgOperationReport Report(string operation, bool success, string title)
+        => new(operation)
+        {
+            Title = title,
+            Success = success,
+            Severity = success ? GpgReportSeverity.Success : GpgReportSeverity.Error,
+        };
+
     // ---------------------------------------------------------------- key management
 
-    private async void OnRefreshClick(object sender, RoutedEventArgs e)
-    {
-        UpdateGpgState();
-        await LoadKeysAsync();
-    }
+    private async void OnRefreshClick(object sender, RoutedEventArgs e) => await LoadKeysAsync();
 
-    private async void OnLocateGpgClick(object sender, RoutedEventArgs e)
+    private async void OnManageKeysClick(object sender, RoutedEventArgs e)
     {
-        string? path = await FilePickerHelper.PickOpenFileAsync(Loc.Get("Gpg_ChooseGpgExe"), ".exe");
-        if (path is null)
+        try
         {
-            return;
+            Directory.CreateDirectory(Store.Directory);
+            Process.Start(new ProcessStartInfo(Store.Directory) { UseShellExecute = true });
         }
-
-        AppServices.Settings.GpgExecutablePath = path;
-        AppServices.Settings.Save();
-        AppServices.ReinitializeGpg();
-        UpdateGpgState();
-        await LoadKeysAsync();
+        catch (Exception ex)
+        {
+            await DialogService.ShowErrorAsync(Loc.Get("Gpg_OpenKeyFolderFailed"), ex);
+        }
     }
 
     private async void OnGenerateClick(object sender, RoutedEventArgs e)
@@ -436,10 +336,13 @@ public sealed partial class GpgPage : Page
         var nameBox = new TextBox { Header = Loc.Get("Gpg_Gen_Name"), PlaceholderText = Loc.Get("Gpg_Gen_NameHint") };
         var emailBox = new TextBox { Header = Loc.Get("Gpg_Gen_Email") };
         var commentBox = new TextBox { Header = Loc.Get("Gpg_Gen_Comment") };
+        AutomationProperties.SetAutomationId(nameBox, "GpgKeyNameBox");
+        AutomationProperties.SetAutomationId(emailBox, "GpgKeyEmailBox");
+        AutomationProperties.SetAutomationId(commentBox, "GpgKeyCommentBox");
         var algorithmBox = new ComboBox
         {
             Header = Loc.Get("Gpg_HeaderAlgorithm"),
-            ItemsSource = new[] { "RSA (2048/3072/4096)", "ECC (NIST/Brainpool)", "Ed25519" },
+            ItemsSource = new[] { "Ed25519", "ECDSA (NIST)", "RSA" },
             SelectedIndex = 0,
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
@@ -448,14 +351,15 @@ public sealed partial class GpgPage : Page
             Header = Loc.Get("Gpg_Gen_RsaKeySize"),
             Minimum = 1024,
             Maximum = 8192,
-            Value = 4096,
+            Value = 3072,
             SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline,
             HorizontalAlignment = HorizontalAlignment.Stretch,
+            IsEnabled = false,
         };
         var curveBox = new ComboBox
         {
             Header = Loc.Get("Gpg_Gen_Curve"),
-            ItemsSource = new[] { "nistp256", "nistp384", "nistp521", "brainpoolP256r1", "brainpoolP384r1", "brainpoolP512r1" },
+            ItemsSource = new[] { "P-256", "P-384", "P-521" },
             SelectedIndex = 0,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             IsEnabled = false,
@@ -467,7 +371,7 @@ public sealed partial class GpgPage : Page
         algorithmBox.SelectionChanged += (_, _) =>
         {
             curveBox.IsEnabled = algorithmBox.SelectedIndex == 1;
-            lengthBox.IsEnabled = algorithmBox.SelectedIndex != 1;
+            lengthBox.IsEnabled = algorithmBox.SelectedIndex == 2;
         };
 
         var panel = new StackPanel { Spacing = 10, MinWidth = 340 };
@@ -500,35 +404,98 @@ public sealed partial class GpgPage : Page
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(nameBox.Text))
+        if (string.IsNullOrWhiteSpace(nameBox.Text) && string.IsNullOrWhiteSpace(emailBox.Text))
         {
             await DialogService.ShowMessageAsync(Loc.Get("Common_InvalidInput"), Loc.Get("Gpg_Gen_NameRequired"));
             return;
         }
 
-        var options = new GpgKeyGenerationOptions
+        var options = new OpenPgpKeyOptions
         {
-            RealName = nameBox.Text.Trim(),
+            Name = nameBox.Text?.Trim() ?? string.Empty,
             Email = emailBox.Text?.Trim() ?? string.Empty,
             Comment = commentBox.Text?.Trim() ?? string.Empty,
             Algorithm = algorithmBox.SelectedIndex switch
             {
-                1 => GpgKeyAlgorithm.Ecc,
-                2 => GpgKeyAlgorithm.Ed25519,
-                _ => GpgKeyAlgorithm.Rsa,
+                1 => OpenPgpKeyAlgorithm.Ecdsa,
+                2 => OpenPgpKeyAlgorithm.Rsa,
+                _ => OpenPgpKeyAlgorithm.Ed25519,
             },
-            KeyLength = double.IsNaN(lengthBox.Value) ? 4096 : (int)lengthBox.Value,
-            SubkeyLength = double.IsNaN(lengthBox.Value) ? 4096 : (int)lengthBox.Value,
-            Curve = curveBox.SelectedItem as string ?? "nistp256",
-            ExpireDate = string.IsNullOrWhiteSpace(expireBox.Text) ? "2y" : expireBox.Text.Trim(),
+            KeySize = double.IsNaN(lengthBox.Value) ? 3072 : (int)lengthBox.Value,
+            Curve = curveBox.SelectedItem as string ?? "P-256",
+            ValidDays = ParseValidity(expireBox.Text),
             Passphrase = string.IsNullOrEmpty(passphraseBox.Password) ? null : passphraseBox.Password,
-            IncludeSubkey = subkeyCheck.IsChecked == true,
+            IncludeEncryptionSubkey = subkeyCheck.IsChecked != false,
         };
 
-        GpgOperationReport? report = await RunAsync(Loc.Get("Gpg_Generate"), "generate", () => AppServices.Gpg.GenerateKey(options));
-        if (report is not null && report.Success)
+        OpenPgpKeyPair? created = null;
+        GpgOperationReport? report = await RunAsync(Loc.Get("Gpg_Generate"), () =>
+        {
+            created = OpenPgp.GenerateKeyPair(options);
+            Store.Add(created, Loc.Get("Gpg_NoteGeneratedByApp"));
+
+            var generated = Report("generate", true, Loc.Get("Gpg_Gen_Done"));
+            generated.With(Loc.Get("Gpg_Row_NewFingerprint"), created.Fingerprint);
+            generated.With(Loc.Get("Gpg_Row_KeyId"), created.KeyId);
+            generated.With(Loc.Get("Gpg_Row_KeyType"), created.Algorithm);
+            generated.With(Loc.Get("Gpg_Detail_Storage"), Store.Directory);
+            if (string.IsNullOrEmpty(options.Passphrase))
+            {
+                generated.Note(Loc.Get("Gpg_NoteNoPassphrase"));
+            }
+            return generated;
+        });
+
+        if (report is not null)
         {
             await LoadKeysAsync();
+            SelectKey(created?.Fingerprint);
+        }
+    }
+
+    /// <summary>Reads "2y" / "365d" / "6m" / plain days; empty or 0 means the key never expires.</summary>
+    internal static int? ParseValidity(string? text)
+    {
+        string value = (text ?? string.Empty).Trim().ToLowerInvariant();
+        if (value.Length == 0)
+        {
+            return null;
+        }
+
+        int multiplier = value[^1] switch
+        {
+            'y' => 365,
+            'm' => 30,
+            'w' => 7,
+            'd' => 1,
+            _ => 0,
+        };
+
+        string digits = multiplier == 0 ? value : value[..^1];
+        if (!double.TryParse(digits, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double amount)
+            || amount <= 0)
+        {
+            return null;
+        }
+
+        return Math.Max(1, (int)Math.Round(amount * (multiplier == 0 ? 1 : multiplier)));
+    }
+
+    private void SelectKey(string? fingerprint)
+    {
+        if (string.IsNullOrWhiteSpace(fingerprint))
+        {
+            return;
+        }
+
+        string normalized = OpenPgpKeyStore.NormalizeFingerprint(fingerprint);
+        GpgRow? row = _visible.FirstOrDefault(r =>
+            string.Equals(OpenPgpKeyStore.NormalizeFingerprint(r.Key.Fingerprint), normalized, StringComparison.OrdinalIgnoreCase));
+
+        if (row is not null)
+        {
+            KeyList.SelectedItem = row;
+            KeyList.ScrollIntoView(row);
         }
     }
 
@@ -545,17 +512,28 @@ public sealed partial class GpgPage : Page
 
         foreach (string path in paths)
         {
-            if (!AppServices.Gpg.IsAvailable)
-            {
-                break;
-            }
-
             try
             {
                 BusyRing.IsActive = true;
                 string file = path;
-                GpgResult result = await Task.Run(() => AppServices.Gpg.ImportKey(file));
-                reports.Add((Path.GetFileName(file), GpgOutputInterpreter.Describe(result, "import", inputPath: file)));
+                GpgOperationReport report = await Task.Run(() =>
+                {
+                    string content = File.ReadAllText(file);
+                    OpenPgpImportResult imported = Store.Import(content, Loc.Format("X509_CommentImportedFrom", Path.GetFileName(file)));
+
+                    bool success = imported.ImportedCount + imported.UpdatedCount > 0;
+                    var built = Report("import", success, Loc.Get(success ? "Gpg_Import_Done" : "Gpg_Import_Nothing"));
+                    built.With(Loc.Get("Gpg_Row_Imported"), Loc.Format("Gpg_Value_Count", imported.Imported));
+                    built.With(Loc.Get("Gpg_Row_Unchanged"), Loc.Format("Gpg_Value_Count", imported.Updated));
+                    if (imported.SkippedCount > 0)
+                    {
+                        built.With(Loc.Get("Gpg_Row_NotImported"), Loc.Format("Gpg_Value_Count", imported.Skipped), GpgReportSeverity.Warning);
+                        built.Note(Loc.Get("Gpg_NoteImportSkipped"));
+                    }
+                    return built;
+                });
+
+                reports.Add((Path.GetFileName(path), report));
             }
             catch (Exception ex)
             {
@@ -580,21 +558,14 @@ public sealed partial class GpgPage : Page
             return;
         }
 
-        var combined = new GpgOperationReport("import")
-        {
-            Title = Loc.Format("Gpg_ProcessedFiles", reports.Count),
-            Success = reports.All(r => r.Report.Success),
-            Severity = reports.All(r => r.Report.Success)
-                ? GpgReportSeverity.Success
-                : reports.Any(r => r.Report.Success) ? GpgReportSeverity.Warning : GpgReportSeverity.Error,
-        };
+        var combined = Report("import", reports.All(r => r.Report.Success), Loc.Format("Gpg_ProcessedFiles", reports.Count));
+        combined.Severity = reports.All(r => r.Report.Success)
+            ? GpgReportSeverity.Success
+            : reports.Any(r => r.Report.Success) ? GpgReportSeverity.Warning : GpgReportSeverity.Error;
 
         foreach ((string file, GpgOperationReport report) in reports)
         {
-            string detail = report.Rows.Count == 0
-                ? report.Title
-                : report.Title + "：" + string.Join("，", report.Rows.Take(2).Select(r => r.Label + " " + r.Value));
-            combined.With(file, detail, report.Severity);
+            combined.With(file, report.Title, report.Severity);
         }
 
         await ShowReportAsync(Loc.Get("Gpg_Import"), combined);
@@ -614,25 +585,14 @@ public sealed partial class GpgPage : Page
             return;
         }
 
-        GpgKey key = row.Key;
-        if (secret && !key.HasSecret)
+        OpenPgpStoredKey key = row.Key;
+        if (secret && !key.HasSecretKey)
         {
             await DialogService.ShowMessageAsync(Loc.Get("Gpg_ExportSecret"), Loc.Get("Gpg_ErrorNoSecret"));
             return;
         }
 
-        string? passphrase = null;
-        if (secret)
-        {
-            passphrase = await DialogService.ShowPasswordAsync(Loc.Get("Gpg_ExportSecret"), Loc.Get("Gpg_ExportPassphraseHint"));
-            if (passphrase is null)
-            {
-                return;
-            }
-        }
-
         string suffix = secret ? "-secret" : "-public";
-        string extension = secret ? ".asc" : ".asc";
         string? path = await FilePickerHelper.PickSaveFileAsync(
             key.ShortFingerprint + suffix, Loc.Get("Common_Export"),
             (Loc.Get(secret ? "Gpg_ExportArmorSecret" : "Gpg_ExportArmorPublic"), new[] { ".asc" }),
@@ -643,28 +603,35 @@ public sealed partial class GpgPage : Page
             return;
         }
 
-        bool armor = path.EndsWith(".asc", StringComparison.OrdinalIgnoreCase);
-        _ = extension;
-
         try
         {
             BusyRing.IsActive = true;
             string target = path;
             string fingerprint = key.Fingerprint;
-            string? secretPassphrase = passphrase is { Length: 0 } ? null : passphrase;
-            await Task.Run(() => AppServices.Gpg.ExportKeyToFile(fingerprint, target, secret, armor, secretPassphrase));
+            bool armor = path.EndsWith(".asc", StringComparison.OrdinalIgnoreCase);
 
-            var report = new GpgOperationReport("export")
+            await Task.Run(() =>
             {
-                Title = Loc.Get(secret ? "Gpg_SecretExported" : "Gpg_PublicExported"),
-                Success = true,
-                Severity = GpgReportSeverity.Success,
-            };
+                string text = secret
+                    ? Store.GetSecretArmor(fingerprint) ?? throw new InvalidOperationException(Loc.Get("Gpg_ErrorNoSecret"))
+                    : Store.GetPublicArmor(fingerprint);
+
+                if (armor)
+                {
+                    File.WriteAllText(target, text);
+                }
+                else
+                {
+                    File.WriteAllBytes(target, OpenPgp.DecodeArmor(text));
+                }
+            });
+
+            var report = Report("export", true, Loc.Get(secret ? "Gpg_SecretExported" : "Gpg_PublicExported"));
             if (secret)
             {
-                report.Note(Loc.Get("Gpg_NoteProtectSecret"));
+                report.Note(Loc.Get(key.IsSecretProtected ? "Gpg_NoteProtectSecret" : "Gpg_NoteUnprotectedSecret"));
             }
-            report.With(Loc.Get("Gpg_Detail_Key"), key.PrimaryUserId);
+            report.With(Loc.Get("Gpg_Detail_Key"), key.UserId);
             report.With(Loc.Get("Gpg_Row_Fingerprint"), key.GroupedFingerprint);
             report.With(Loc.Get("Gpg_Row_OutputFile"), path);
             await ShowReportAsync(Loc.Get(secret ? "Gpg_ExportSecret" : "Gpg_ExportPublic"), report);
@@ -687,26 +654,36 @@ public sealed partial class GpgPage : Page
             return;
         }
 
-        GpgKey key = row.Key;
+        OpenPgpStoredKey key = row.Key;
         bool confirmed = await DialogService.ShowConfirmAsync(
             Loc.Get("Gpg_DeleteKey"),
-            Loc.Format("Gpg_ConfirmDelete", key.PrimaryUserId, key.GroupedFingerprint) +
-            (key.HasSecret ? Loc.Get("Gpg_DeleteSecretWarning") : string.Empty),
+            Loc.Format("Gpg_ConfirmDelete", key.UserId, key.GroupedFingerprint) +
+            (key.HasSecretKey ? Loc.Get("Gpg_DeleteSecretWarning") : string.Empty),
             Loc.Get("Common_Delete"));
         if (!confirmed)
         {
             return;
         }
 
-        await RunAsync(Loc.Get("Gpg_DeleteKey"), "delete", () => AppServices.Gpg.DeleteKey(key.Fingerprint, key.HasSecret));
-        await LoadKeysAsync();
+        GpgOperationReport? report = await RunAsync(Loc.Get("Gpg_DeleteKey"), () =>
+        {
+            bool removed = Store.Delete(key.Fingerprint);
+            var built = Report("delete", removed, Loc.Get(removed ? "Gpg_DeleteDone" : "Gpg_DeleteFailed"));
+            built.With(Loc.Get("Gpg_Detail_Key"), key.UserId);
+            return built;
+        });
+
+        if (report is not null)
+        {
+            await LoadKeysAsync();
+        }
     }
 
     // ---------------------------------------------------------------- file operations
 
     private async void OnEncryptClick(object sender, RoutedEventArgs e)
     {
-        List<GpgKey> recipients = _all.Where(k => k.CanEncrypt).ToList();
+        List<OpenPgpStoredKey> recipients = _all.Where(k => k.CanEncrypt).ToList();
         if (recipients.Count == 0)
         {
             await DialogService.ShowMessageAsync(Loc.Get("Gpg_EncryptFile"), Loc.Get("Gpg_ErrorNoEncryptionKey"));
@@ -723,25 +700,37 @@ public sealed partial class GpgPage : Page
         {
             SelectionMode = ListViewSelectionMode.Multiple,
             ItemsSource = recipients,
-            DisplayMemberPath = "PrimaryUserId",
+            DisplayMemberPath = "UserId",
             Height = 200,
         };
 
         var armorCheck = new CheckBox { Content = Loc.Get("Gpg_EncryptArmor"), IsChecked = true };
         var signCheck = new CheckBox { Content = Loc.Get("Gpg_EncryptSign") };
-        var passphraseBox = new PasswordBox { Header = Loc.Get("Gpg_EncryptSignPassphrase") };
+        var signKeyBox = new ComboBox
+        {
+            Header = Loc.Get("Gpg_SignKey"),
+            ItemsSource = _all.Where(k => k.HasSecretKey && k.CanSign).ToList(),
+            DisplayMemberPath = "UserId",
+            SelectedIndex = 0,
+            IsEnabled = false,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+        };
+        var passphraseBox = new PasswordBox { Header = Loc.Get("Gpg_EncryptSignPassphrase"), IsEnabled = false };
+        signCheck.Checked += (_, _) => { signKeyBox.IsEnabled = true; passphraseBox.IsEnabled = true; };
+        signCheck.Unchecked += (_, _) => { signKeyBox.IsEnabled = false; passphraseBox.IsEnabled = false; };
 
         var panel = new StackPanel { Spacing = 8, MinWidth = 340 };
-        panel.Children.Add(new TextBlock { Text = Loc.Get("Gpg_EncryptRecipients") });
+        panel.Children.Add(new TextBlock { Text = Loc.Get("Gpg_EncryptRecipients"), TextWrapping = TextWrapping.Wrap });
         panel.Children.Add(recipientList);
         panel.Children.Add(armorCheck);
         panel.Children.Add(signCheck);
+        panel.Children.Add(signKeyBox);
         panel.Children.Add(passphraseBox);
 
         var dialog = new ContentDialog
         {
             Title = Loc.Get("Gpg_EncryptFile"),
-            Content = panel,
+            Content = new ScrollViewer { Content = panel, MaxHeight = 520 },
             PrimaryButtonText = Loc.Get("Common_Next"),
             CloseButtonText = Loc.Get("Common_Cancel"),
             DefaultButton = ContentDialogButton.Primary,
@@ -752,10 +741,19 @@ public sealed partial class GpgPage : Page
             return;
         }
 
-        List<GpgKey> selected = recipientList.SelectedItems.Cast<GpgKey>().ToList();
+        List<OpenPgpStoredKey> selected = recipientList.SelectedItems.Cast<OpenPgpStoredKey>().ToList();
         if (selected.Count == 0)
         {
             await DialogService.ShowMessageAsync(Loc.Get("Gpg_EncryptFile"), Loc.Get("Gpg_ErrorNoRecipient"));
+            return;
+        }
+
+        bool sign = signCheck.IsChecked == true;
+        OpenPgpStoredKey? signingKey = signKeyBox.SelectedItem as OpenPgpStoredKey;
+
+        if (sign && signingKey is null)
+        {
+            await DialogService.ShowMessageAsync(Loc.Get("Gpg_EncryptFile"), Loc.Get("Gpg_ErrorNoSecretKey"));
             return;
         }
 
@@ -768,17 +766,28 @@ public sealed partial class GpgPage : Page
         }
 
         bool armor = armorCheck.IsChecked == true;
-        bool sign = signCheck.IsChecked == true;
         string? passphrase = string.IsNullOrEmpty(passphraseBox.Password) ? null : passphraseBox.Password;
-        List<string> fingerprints = selected.Select(k => k.Fingerprint).ToList();
+        List<string> recipientArmor = selected.Select(k => k.PublicKeyArmor).ToList();
+        string? signArmor = signingKey is null ? null : Store.GetSecretArmor(signingKey.Fingerprint);
+        string fileName = Path.GetFileName(inputPath);
 
-        await RunAsync(
-            Loc.Get("Gpg_EncryptFile"),
-            "encrypt",
-            () => AppServices.Gpg.EncryptFile(inputPath, outputPath, fingerprints, armor, sign, null, passphrase),
-            inputPath: inputPath,
-            outputPath: outputPath,
-            recipients: fingerprints);
+        await RunAsync(Loc.Get("Gpg_EncryptFile"), () =>
+        {
+            byte[] data = File.ReadAllBytes(inputPath);
+            byte[] encrypted = OpenPgp.Encrypt(data, recipientArmor, armor, signArmor, passphrase, fileName);
+            File.WriteAllBytes(outputPath, encrypted);
+
+            var report = Report("encrypt", true, Loc.Get("Gpg_Encrypt_Done"));
+            report.With(Loc.Get("Gpg_Row_InputFile"), fileName);
+            report.With(Loc.Get("Gpg_Row_OutputFile"), outputPath);
+            foreach (OpenPgpStoredKey recipient in selected)
+            {
+                report.With(Loc.Get("Gpg_Row_RecipientKey"), recipient.ShortFingerprint);
+            }
+            report.With(Loc.Get("Gpg_Row_RecipientCount"), selected.Count.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            report.With(Loc.Get("Gpg_Row_AlsoSigned"), Loc.Get(sign ? "Common_Yes" : "Common_No"));
+            return report;
+        });
     }
 
     private async void OnDecryptClick(object sender, RoutedEventArgs e)
@@ -786,6 +795,18 @@ public sealed partial class GpgPage : Page
         string? inputPath = await FilePickerHelper.PickOpenFileAsync(Loc.Get("Gpg_PickFileToDecrypt"), ".asc", ".gpg", ".pgp");
         if (inputPath is null)
         {
+            return;
+        }
+
+        // Every secret key is offered to the engine, which picks the one the message was made for.
+        string secrets = string.Concat(_all
+            .Where(k => k.HasSecretKey)
+            .Select(k => Store.GetSecretArmor(k.Fingerprint))
+            .Where(armor => !string.IsNullOrEmpty(armor)));
+
+        if (secrets.Length == 0)
+        {
+            await DialogService.ShowMessageAsync(Loc.Get("Gpg_DecryptFile"), Loc.Get("Gpg_ErrorNoSecretKey"));
             return;
         }
 
@@ -802,17 +823,24 @@ public sealed partial class GpgPage : Page
             return;
         }
 
-        await RunAsync(
-            Loc.Get("Gpg_DecryptFile"),
-            "decrypt",
-            () => AppServices.Gpg.DecryptFile(inputPath, outputPath, passphrase.Length == 0 ? null : passphrase),
-            inputPath: inputPath,
-            outputPath: outputPath);
+        string? secret = passphrase.Length == 0 ? null : passphrase;
+
+        await RunAsync(Loc.Get("Gpg_DecryptFile"), () =>
+        {
+            byte[] data = OpenPgp.Decrypt(File.ReadAllBytes(inputPath), secrets, secret);
+            File.WriteAllBytes(outputPath, data);
+
+            var report = Report("decrypt", true, Loc.Get("Gpg_Decrypt_Done"));
+            report.With(Loc.Get("Gpg_Row_InputFile"), Path.GetFileName(inputPath));
+            report.With(Loc.Get("Gpg_Row_OutputFile"), outputPath);
+            report.With(Loc.Get("Gpg_Row_DataLength"), Loc.Format("Gpg_Value_Bytes", data.Length));
+            return report;
+        });
     }
 
     private async void OnSignClick(object sender, RoutedEventArgs e)
     {
-        List<GpgKey> signingKeys = _all.Where(k => k.CanSign && k.HasSecret).ToList();
+        List<OpenPgpStoredKey> signingKeys = _all.Where(k => k.HasSecretKey && k.CanSign).ToList();
         if (signingKeys.Count == 0)
         {
             await DialogService.ShowMessageAsync(Loc.Get("Gpg_SignFile"), Loc.Get("Gpg_ErrorNoSecretKey"));
@@ -829,21 +857,16 @@ public sealed partial class GpgPage : Page
         {
             Header = Loc.Get("Gpg_SignKey"),
             ItemsSource = signingKeys,
-            DisplayMemberPath = "PrimaryUserId",
+            DisplayMemberPath = "UserId",
             SelectedIndex = 0,
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
         var detachedCheck = new CheckBox { Content = Loc.Get("Gpg_SignDetached"), IsChecked = true };
-        var clearCheck = new CheckBox { Content = Loc.Get("Gpg_SignClearsign") };
         var passphraseBox = new PasswordBox { Header = Loc.Get("Gpg_SignPassphrase") };
-
-        detachedCheck.Checked += (_, _) => { clearCheck.IsChecked = false; };
-        clearCheck.Checked += (_, _) => { detachedCheck.IsChecked = false; };
 
         var panel = new StackPanel { Spacing = 8, MinWidth = 340 };
         panel.Children.Add(keyBox);
         panel.Children.Add(detachedCheck);
-        panel.Children.Add(clearCheck);
         panel.Children.Add(passphraseBox);
 
         var dialog = new ContentDialog
@@ -860,14 +883,13 @@ public sealed partial class GpgPage : Page
             return;
         }
 
-        if (keyBox.SelectedItem is not GpgKey signingKey)
+        if (keyBox.SelectedItem is not OpenPgpStoredKey signingKey)
         {
             return;
         }
 
         bool detached = detachedCheck.IsChecked == true;
-        bool clear = clearCheck.IsChecked == true;
-        string extension = detached ? ".sig" : clear ? ".asc" : ".gpg";
+        string extension = detached ? ".sig" : ".asc";
         string? outputPath = await FilePickerHelper.PickSaveFileAsync(
             Path.GetFileName(inputPath) + extension, Loc.Get("Gpg_SaveSignature"), (Loc.Get("Gpg_SignFile"), new[] { extension }));
         if (outputPath is null)
@@ -876,13 +898,27 @@ public sealed partial class GpgPage : Page
         }
 
         string? passphrase = string.IsNullOrEmpty(passphraseBox.Password) ? null : passphraseBox.Password;
+        string? secretArmor = Store.GetSecretArmor(signingKey.Fingerprint);
+        if (secretArmor is null)
+        {
+            await DialogService.ShowMessageAsync(Loc.Get("Gpg_SignFile"), Loc.Get("Gpg_ErrorNoSecretKey"));
+            return;
+        }
 
-        await RunAsync(
-            Loc.Get("Gpg_SignFile"),
-            "sign",
-            () => AppServices.Gpg.SignFile(inputPath, outputPath, detached, armor: true, signingKey.Fingerprint, passphrase, clear),
-            inputPath: inputPath,
-            outputPath: outputPath);
+        await RunAsync(Loc.Get("Gpg_SignFile"), () =>
+        {
+            byte[] data = File.ReadAllBytes(inputPath);
+            byte[] signed = OpenPgp.Sign(data, secretArmor, passphrase, detached);
+            File.WriteAllBytes(outputPath, signed);
+
+            var report = Report("sign", true, Loc.Get("Gpg_Sign_Done"));
+            report.With(Loc.Get("Gpg_Row_InputFile"), Path.GetFileName(inputPath));
+            report.With(Loc.Get("Gpg_Row_OutputFile"), outputPath);
+            report.With(Loc.Get("Gpg_Row_Signer"), signingKey.UserId);
+            report.With(Loc.Get("Gpg_Row_SignatureType"), Loc.Get(detached ? "Gpg_SigTypeDetached" : "Gpg_SigTypeInline"));
+            report.With(Loc.Get("Gpg_Row_HashAlgorithm"), "SHA-512");
+            return report;
+        });
     }
 
     private async void OnVerifyClick(object sender, RoutedEventArgs e)
@@ -893,12 +929,82 @@ public sealed partial class GpgPage : Page
             return;
         }
 
-        string? dataPath = await FilePickerHelper.PickOpenFileAsync(Loc.Get("Gpg_PickSignedData"), ".*");
+        byte[] payload;
+        try
+        {
+            payload = await File.ReadAllBytesAsync(signaturePath);
+        }
+        catch (Exception ex)
+        {
+            await DialogService.ShowErrorAsync(Loc.Get("Gpg_VerifyResult"), ex);
+            return;
+        }
 
-        await RunAsync(
-            Loc.Get("Gpg_VerifyResult"),
-            "verify",
-            () => AppServices.Gpg.VerifyFile(signaturePath, dataPath),
-            inputPath: signaturePath);
+        byte[]? data = null;
+        byte[] signature;
+
+        if (OpenPgp.IsDetachedSignature(payload))
+        {
+            signature = payload;
+
+            // A detached signature normally sits next to the file it signs, so offer that first.
+            string guess = signaturePath[..^Path.GetExtension(signaturePath).Length];
+            string? dataPath = File.Exists(guess)
+                ? guess
+                : await FilePickerHelper.PickOpenFileAsync(Loc.Get("Gpg_PickSignedData"), ".*");
+
+            if (dataPath is null)
+            {
+                return;
+            }
+
+            data = await File.ReadAllBytesAsync(dataPath);
+        }
+        else
+        {
+            try
+            {
+                (data, signature) = OpenPgp.ReadSignedMessage(payload);
+            }
+            catch (Exception ex)
+            {
+                await DialogService.ShowErrorAsync(Loc.Get("Gpg_VerifyResult"), ex);
+                return;
+            }
+        }
+
+        string keyId = OpenPgp.KeyIdOfSignature(signature);
+        OpenPgpStoredKey? signer = _all.FirstOrDefault(k =>
+            string.Equals(k.KeyId, keyId, StringComparison.OrdinalIgnoreCase));
+
+        if (signer is null)
+        {
+            await DialogService.ShowMessageAsync(
+                Loc.Get("Gpg_VerifyResult"),
+                Loc.Format("Gpg_VerifyUnknownKey", keyId));
+            return;
+        }
+
+        byte[] verifiedData = data;
+        byte[] verifiedSignature = signature;
+        OpenPgpStoredKey signerKey = signer;
+
+        await RunAsync(Loc.Get("Gpg_VerifyResult"), () =>
+        {
+            OpenPgpVerification verification = OpenPgp.Verify(verifiedData, verifiedSignature, signerKey.PublicKeyArmor);
+
+            var report = Report("verify", verification.IsValid, Loc.Get(verification.IsValid ? "Gpg_Verify_Good" : "Gpg_Verify_Bad"));
+            report.Severity = verification.IsValid ? GpgReportSeverity.Success : GpgReportSeverity.Error;
+            report.With(Loc.Get("Gpg_Row_Signer"), verification.SignerUserId);
+            report.With(Loc.Get("Gpg_Row_Fingerprint"), verification.SignerFingerprint);
+            report.With(Loc.Get("Gpg_Row_KeyId"), verifiedSignature.Length > 0 ? keyId : string.Empty);
+            if (verification.Created is not null)
+            {
+                report.With(Loc.Get("Gpg_Row_SignatureTime"), verification.Created.Value.ToString("yyyy-MM-dd HH:mm:ss"));
+            }
+            report.With(Loc.Get("Gpg_Row_DataLength"), Loc.Format("Gpg_Value_Bytes", verifiedData.Length));
+            report.Note(verification.Summary);
+            return report;
+        });
     }
 }

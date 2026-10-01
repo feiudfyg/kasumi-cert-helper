@@ -271,24 +271,22 @@ public class GpgPageTests
     public GpgPageTests(AppFixture app) => _app = app;
 
     [Fact]
-    public void LocalKeysAreListed()
+    public void GeneratingAKeyPairListsItAndShowsParsedDetails()
     {
         _app.SelectPage("GPG / GnuPG", "KeyList");
 
-        AutomationElement[] keys = UiHelpers.WaitForListItems(_app, "KeyList", TimeSpan.FromSeconds(90));
-        Assert.NotEmpty(keys);
+        string name = "Kasumi UI Test " + Guid.NewGuid().ToString("N")[..6];
 
-        string[] names = keys.Select(k => k.Name ?? string.Empty).ToArray();
-        Assert.Contains(names, n => n.Length > 4);
-    }
+        AppFixture.Activate(_app.RequireById("GenerateButton"));
+        _app.RequireById("GpgKeyNameBox", 30).AsTextBox().Enter(name);
+        _app.ClickButtonNamed("生成");
 
-    [Fact]
-    public void SelectingAKeyShowsParsedDetails()
-    {
-        _app.SelectPage("GPG / GnuPG", "KeyList");
+        // The operation reports what it did in a modal dialog, which has to be dismissed.
+        _app.ClickButtonNamed("确定", 90);
 
         AutomationElement[] keys = UiHelpers.WaitForListItems(_app, "KeyList", TimeSpan.FromSeconds(90));
         Assert.NotEmpty(keys);
+        Assert.Contains(keys, k => (k.Name ?? string.Empty).Contains(name, StringComparison.Ordinal));
 
         AppFixture.Activate(keys[0]);
 
@@ -296,10 +294,14 @@ public class GpgPageTests
             _app.WaitUntil(() => !string.IsNullOrWhiteSpace(UiHelpers.TextOf(_app, "Detail_Fingerprint")), 40),
             "选择密钥后未显示解析后的指纹。\n" + _app.DumpTree(9));
 
-        string details = UiHelpers.TextOf(_app, "Detail_Fingerprint");
-        Assert.Contains(" ", details);
+        string fingerprint = UiHelpers.TextOf(_app, "Detail_Fingerprint");
+        Assert.Contains(" ", fingerprint);
         Assert.False(string.IsNullOrWhiteSpace(UiHelpers.TextOf(_app, "Detail_Algorithm")), "未显示算法。");
         Assert.False(string.IsNullOrWhiteSpace(UiHelpers.TextOf(_app, "Detail_Status")), "未显示状态。");
+
+        // The armored public key lives in a collapsed section.
+        UiHelpers.ExpandSection(_app, "公钥");
+        Assert.False(string.IsNullOrWhiteSpace(UiHelpers.TextOf(_app, "Detail_PublicArmor")), "未显示公钥。");
     }
 
     [Fact]
@@ -445,10 +447,11 @@ public class SettingsPageTests
     {
         OpenSettings();
 
-        Assert.NotNull(_app.RequireById("GpgPathBox"));
-        Assert.NotNull(_app.RequireById("ElevationText"));
-        Assert.NotNull(_app.RequireById("GpgOriginText"));
         Assert.NotNull(_app.RequireById("LanguageBox"));
+        Assert.NotNull(_app.RequireById("ElevationText"));
+        Assert.NotNull(_app.RequireById("PgpKeyCountText"));
+        Assert.NotNull(_app.RequireById("PgpDirectoryText"));
+        Assert.NotNull(_app.RequireById("OpenPgpFolderButton"));
     }
 
     /// <summary>

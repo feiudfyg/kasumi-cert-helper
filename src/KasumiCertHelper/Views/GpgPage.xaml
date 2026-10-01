@@ -58,6 +58,12 @@
                                 <TextBlock Text="{x:Bind T('Gpg_DeleteKey')}" />
                             </StackPanel>
                         </Button>
+                        <Button x:Name="OpenKeyFolderButton" Click="OnManageKeysClick">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon Glyph="&#xE8B7;" FontSize="14" />
+                                <TextBlock Text="{x:Bind T('Gpg_OpenKeyFolder')}" />
+                            </StackPanel>
+                        </Button>
                     </StackPanel>
                 </ScrollViewer>
                 <ProgressRing x:Name="BusyRing" Grid.Row="0" Grid.Column="2" IsActive="False" Width="20" Height="20"
@@ -121,16 +127,8 @@
             </Grid>
         </Border>
 
-        <InfoBar x:Name="GpgInfoBar" Grid.Row="1" IsOpen="False" Severity="Warning"
-                 Title="{x:Bind T('Gpg_NotFoundTitle')}" Message="{x:Bind T('Gpg_NotFoundMessage')}"
-                 IsClosable="False" Margin="8,4">
-            <InfoBar.ActionButton>
-                <Button Content="{x:Bind T('Gpg_ChooseGpgExe')}" Click="OnLocateGpgClick" />
-            </InfoBar.ActionButton>
-        </InfoBar>
-
         <!-- ===================== content ===================== -->
-        <Grid x:Name="ContentGrid" Grid.Row="2">
+        <Grid x:Name="ContentGrid" Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="520" MinWidth="280" />
                 <ColumnDefinition Width="Auto" />

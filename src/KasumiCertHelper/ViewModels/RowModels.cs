@@ -64,29 +64,3 @@ public sealed class X509Row
     public override string ToString() => Item.ToString();
 }
 
-public sealed class GpgRow
-{
-    public GpgRow(GpgKey key, TableColumnLayout columns)
-    {
-        Key = key;
-        Columns = columns;
-    }
-
-    public GpgKey Key { get; }
-
-    public TableColumnLayout Columns { get; }
-
-    public string PrimaryUserId => Key.PrimaryUserId;
-
-    public string ShortFingerprint => Key.ShortFingerprint;
-
-    public string AlgorithmText => Key.AlgorithmText;
-
-    public string ExpiresText => Key.Expires is null ? Loc.Get("Gpg_NeverExpires") : Key.Expires.Value.ToString("yyyy-MM-dd");
-
-    public string SecretText => Key.SecretText;
-
-    public string StatusText => Key.StatusText;
-
-    public override string ToString() => Key.ToString();
-}

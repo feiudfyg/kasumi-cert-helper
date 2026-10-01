@@ -24,6 +24,9 @@ public sealed class AppFixture : IDisposable
         };
         startInfo.Environment["KASUMI_APPDATA"] = ProfileDirectory;
 
+        // The bundled GnuPG is extracted on first use; keep that out of the real user profile so the
+        // tests also exercise the extraction path.
+
         Application = Application.Launch(startInfo);
         Automation = new UIA3Automation();
 

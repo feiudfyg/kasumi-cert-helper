@@ -25,8 +25,6 @@ public sealed partial class SettingsPage : Page
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        GpgPathBox.Text = AppServices.Settings.GpgExecutablePath;
-        GpgHomeBox.Text = AppServices.Settings.GpgHomeDirectory ?? string.Empty;
         BuildLanguageList();
         UpdateStatus();
     }
@@ -95,75 +93,20 @@ public sealed partial class SettingsPage : Page
         AboutText.Text = Loc.Get("Settings_AboutText") + "\n" +
                          Loc.Get("Settings_LogFilePrefix") + AppServices.LogPath;
 
-        if (AppServices.Gpg.IsAvailable)
-        {
-            try
-            {
-                GpgVersionText.Text = AppServices.Gpg.GetVersion();
-            }
-            catch (Exception ex)
-            {
-                GpgVersionText.Text = Loc.Get("Settings_CannotReadVersionPrefix") + ex.Message;
-            }
-
-            GpgOriginText.Text = AppServices.Gpg.IsBundled
-                ? Loc.Get("Settings_GpgBundled") + AppServices.Gpg.ExecutablePath + Loc.Get("Settings_GpgBundledSuffix")
-                : Loc.Get("Settings_GpgSystem") + AppServices.Gpg.ExecutablePath + Loc.Get("Settings_GpgSystemSuffix");
-        }
-        else
-        {
-            GpgVersionText.Text = Loc.Get("Settings_GpgNotFound");
-            GpgOriginText.Text = Loc.Get("Settings_GpgNotFoundHint");
-        }
+        PgpKeyCountText.Text = Loc.Format("Settings_PgpKeyCount", AppServices.Pgp.List().Count);
+        PgpDirectoryText.Text = Loc.Get("Settings_PgpDirectoryPrefix") + AppServices.PgpDirectory;
     }
 
-    private async void OnBrowseGpgClick(object sender, RoutedEventArgs e)
-    {
-        string? path = await FilePickerHelper.PickOpenFileAsync(Loc.Get("Gpg_ChooseGpgExe"), ".exe");
-        if (path is not null)
-        {
-            GpgPathBox.Text = path;
-        }
-    }
-
-    private async void OnBrowseHomeClick(object sender, RoutedEventArgs e)
-    {
-        string? path = await FilePickerHelper.PickFolderAsync();
-        if (path is not null)
-        {
-            GpgHomeBox.Text = path;
-        }
-    }
-
-    private void OnDetectGpgClick(object sender, RoutedEventArgs e)
-    {
-        string? detected = GpgService.AutoDetect();
-        GpgPathBox.Text = detected ?? string.Empty;
-        if (detected is null)
-        {
-            _ = DialogService.ShowMessageAsync(Loc.Get("Settings_AutoDetect"), Loc.Get("Settings_AutoDetectFailed"));
-        }
-    }
-
-    private void OnSaveGpgClick(object sender, RoutedEventArgs e)
-    {
-        AppServices.Settings.GpgExecutablePath = GpgPathBox.Text?.Trim() ?? string.Empty;
-        AppServices.Settings.GpgHomeDirectory = string.IsNullOrWhiteSpace(GpgHomeBox.Text) ? null : GpgHomeBox.Text.Trim();
-        AppServices.Settings.Save();
-        AppServices.ReinitializeGpg();
-        UpdateStatus();
-    }
-
-    private async void OnCheckGpgClick(object sender, RoutedEventArgs e)
+    private async void OnOpenPgpFolderClick(object sender, RoutedEventArgs e)
     {
         try
         {
-            string version = await Task.Run(() => AppServices.Gpg.GetVersion());
-            await DialogService.ShowMessageAsync(Loc.Get("Settings_GpgTestTitle"), Loc.Get("Settings_GpgTestOkPrefix") + version);
+            Directory.CreateDirectory(AppServices.PgpDirectory);
+            Process.Start(new ProcessStartInfo(AppServices.PgpDirectory) { UseShellExecute = true });
         }
         catch (Exception ex)
         {
-            await DialogService.ShowErrorAsync(Loc.Get("Settings_GpgTestFailed"), ex);
+            await DialogService.ShowErrorAsync(Loc.Get("Gpg_OpenKeyFolderFailed"), ex);
         }
     }
 

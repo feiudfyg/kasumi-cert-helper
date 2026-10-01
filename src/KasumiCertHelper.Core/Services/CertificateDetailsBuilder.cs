@@ -176,7 +176,7 @@ public static class CertificateDetailsBuilder
                 X509EnhancedKeyUsageExtension eku => string.Join(
                     Loc.Get("Common_SentenceSeparator"),
                     eku.EnhancedKeyUsages.Cast<Oid>().Select(o => o?.FriendlyName ?? o?.Value ?? string.Empty)),
-                X509SubjectKeyIdentifierExtension ski => ski.SubjectKeyIdentifier,
+                X509SubjectKeyIdentifierExtension ski => ski.SubjectKeyIdentifier ?? string.Empty,
                 _ => Convert.ToHexString(extension.RawData),
             };
         }

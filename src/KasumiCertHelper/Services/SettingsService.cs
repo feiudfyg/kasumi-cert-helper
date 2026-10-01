@@ -9,10 +9,6 @@ public sealed class SettingsService
 
     private static string SettingsFilePath => Path.Combine(AppServices.AppDataDirectory, "settings.json");
 
-    public string GpgExecutablePath { get; set; } = string.Empty;
-
-    public string? GpgHomeDirectory { get; set; }
-
     public string? LastDatabasePath { get; set; }
 
     public string? LastDirectory { get; set; }
