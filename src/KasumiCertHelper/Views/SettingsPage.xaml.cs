@@ -91,6 +91,7 @@ public sealed partial class SettingsPage : Page
             : Loc.Get("Settings_LastDatabasePrefix") + AppServices.Settings.LastDatabasePath;
 
         AboutText.Text = Loc.Get("Settings_AboutText") + "\n" +
+                         Loc.Get("Settings_LicenseLine") + "\n" +
                          Loc.Get("Settings_LogFilePrefix") + AppServices.LogPath;
 
         PgpKeyCountText.Text = Loc.Format("Settings_PgpKeyCount", AppServices.Pgp.List().Count);
