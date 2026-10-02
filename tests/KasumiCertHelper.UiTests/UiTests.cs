@@ -472,7 +472,7 @@ public class SettingsPageTests
         Assert.Contains("CommunityToolkit.Mvvm", components, StringComparison.Ordinal);
         Assert.Contains("MIT", components, StringComparison.Ordinal);
 
-        Assert.Contains("GPLv3", UiHelpers.TextOf(_app, "SourceText"), StringComparison.OrdinalIgnoreCase);
+        Assert.False(string.IsNullOrWhiteSpace(UiHelpers.TextOf(_app, "SourceText")), "源代码链接没有说明文字。");
         Assert.Equal(
             "https://github.com/feiudfyg/kasumi-cert-helper",
             UiHelpers.TextOf(_app, "SourceLinkButton"));

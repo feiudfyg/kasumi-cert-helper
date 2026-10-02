@@ -46,12 +46,12 @@ public class AboutNoticeTests
     [Theory]
     [InlineData("en")]
     [InlineData("zh-CN")]
-    public void AboutPagePointsAtTheSourceCode(string culture)
+    public void AboutPageLabelsTheSourceCodeLink(string culture)
     {
         string label = Loc.GetFor(culture, "Settings_SourceCodeLabel");
 
         Assert.False(string.IsNullOrWhiteSpace(label));
-        Assert.Contains("GPLv3", label, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("GPL", label, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
