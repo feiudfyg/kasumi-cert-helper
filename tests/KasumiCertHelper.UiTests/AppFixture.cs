@@ -540,14 +540,23 @@ public sealed class AppFixture : IDisposable
             throw new InvalidOperationException("未能定位解决方案根目录（KasumiCertHelper.slnx）。");
         }
 
+        // Launch the build that matches this test run: bin\Release\... when the tests are run with
+        // -c Release, bin\Debug\... otherwise.
+        string configuration = AppContext.BaseDirectory.Contains(
+            $"{Path.DirectorySeparatorChar}Release{Path.DirectorySeparatorChar}",
+            StringComparison.OrdinalIgnoreCase)
+            ? "Release"
+            : "Debug";
+
         string executable = Path.Combine(
             directory.FullName,
-            "src", "KasumiCertHelper", "bin", "Debug", "net8.0-windows10.0.19041.0", "win-x64",
+            "src", "KasumiCertHelper", "bin", configuration, "net8.0-windows10.0.19041.0", "win-x64",
             "KasumiCertHelper.exe");
 
         if (!File.Exists(executable))
         {
-            throw new FileNotFoundException("未找到应用程序可执行文件，请先构建解决方案。", executable);
+            throw new FileNotFoundException(
+                $"未找到 {configuration} 配置的应用程序可执行文件，请先构建解决方案。", executable);
         }
 
         return executable;

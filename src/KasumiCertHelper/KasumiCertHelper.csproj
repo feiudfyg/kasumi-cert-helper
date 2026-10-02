@@ -22,10 +22,18 @@
     <PublishTrimmed>False</PublishTrimmed>
     <PublishReadyToRun>False</PublishReadyToRun>
     <EnableDefaultPageItems>true</EnableDefaultPageItems>
+
+    <!--
+      Only the runtime resources the interface actually uses are shipped. The
+      Microsoft.WindowsAppSDK metapackage would also pull in Widgets, AI and ML (onnxruntime +
+      DirectML, about 41 MB) which this application never touches.
+    -->
+    <SatelliteResourceLanguages>en;zh-Hans</SatelliteResourceLanguages>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260921001" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.WinUI" Version="1.8.260803003" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.Runtime" Version="1.8.260921001" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.4654" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
   </ItemGroup>
@@ -37,5 +45,40 @@
   <ItemGroup>
     <Manifest Include="$(ApplicationManifest)" />
   </ItemGroup>
+
+  <!--
+    The Windows App SDK runtime package carries the Windows ML payload (onnxruntime, DirectML and
+    the Microsoft.Windows.AI projections) although this application never calls into it. It is
+    removed from the published output only, so day to day builds keep everything the framework
+    might probe for.
+  -->
+  <Target Name="RemoveUnusedWindowsMlPayload" AfterTargets="Publish">
+    <ItemGroup>
+      <UnusedWindowsMlFile Include="$(PublishDir)onnxruntime.dll" />
+      <UnusedWindowsMlFile Include="$(PublishDir)onnxruntime_providers_shared.dll" />
+      <UnusedWindowsMlFile Include="$(PublishDir)DirectML.dll" />
+      <UnusedWindowsMlFile Include="$(PublishDir)Microsoft.ML.OnnxRuntime.dll" />
+      <UnusedWindowsMlFile Include="$(PublishDir)Microsoft.Windows.AI.*.dll" />
+      <UnusedWindowsMlFile Include="$(PublishDir)Microsoft.Windows.AI.*.winmd" />
+    </ItemGroup>
+    <Delete Files="@(UnusedWindowsMlFile)" ContinueOnError="true" />
+    <RemoveDir Directories="$(PublishDir)NpuDetect" ContinueOnError="true" />
+    <Message Importance="normal"
+             Text="Removed the unused Windows ML payload from $(PublishDir)" />
+  </Target>
+
+  <!--
+    The compiled XAML and the resource index live in <AssemblyName>.pri. With Msix tooling turned
+    off nothing adds it to the publish output, and the application then fails at startup with
+    "XAML parsing failed", so it is copied next to the executable explicitly.
+  -->
+  <Target Name="IncludeAppPriInPublish" AfterTargets="Publish">
+    <Copy SourceFiles="$(OutDir)$(AssemblyName).pri"
+          DestinationFolder="$(PublishDir)"
+          SkipUnchangedFiles="true"
+          Condition="Exists('$(OutDir)$(AssemblyName).pri')" />
+    <Error Text="没有找到 $(OutDir)$(AssemblyName).pri，生成的程序无法加载 XAML。"
+           Condition="!Exists('$(PublishDir)$(AssemblyName).pri')" />
+  </Target>
 
 </Project>
