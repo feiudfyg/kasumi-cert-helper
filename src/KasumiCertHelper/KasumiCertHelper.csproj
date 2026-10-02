@@ -47,6 +47,17 @@
   </ItemGroup>
 
   <!--
+    A distributed binary has to carry the license text and the notices of the libraries it uses
+    (GPLv3, and the MIT notice of BouncyCastle and CommunityToolkit).
+  -->
+  <ItemGroup>
+    <None Include="..\..\LICENSE" Link="LICENSE"
+          CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="..\..\THIRD-PARTY-NOTICES.md" Link="THIRD-PARTY-NOTICES.md"
+          CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!--
     The Windows App SDK runtime package carries the Windows ML payload (onnxruntime, DirectML and
     the Microsoft.Windows.AI projections) although this application never calls into it. It is
     removed from the published output only, so day to day builds keep everything the framework

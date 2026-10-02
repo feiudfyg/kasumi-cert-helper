@@ -455,6 +455,31 @@ public class SettingsPageTests
     }
 
     /// <summary>
+    /// GPLv3 requires the corresponding source of a distributed binary to be obtainable and the MIT
+    /// notices of the bundled libraries to be included, so both have to be visible in the interface.
+    /// </summary>
+    [Fact]
+    public void AboutSectionOffersTheSourceAndListsTheComponents()
+    {
+        OpenSettings();
+
+        string about = UiHelpers.TextOf(_app, "AboutText");
+        Assert.Contains("feiudfyg", about, StringComparison.Ordinal);
+        Assert.Contains("GPLv3", about, StringComparison.OrdinalIgnoreCase);
+
+        string components = UiHelpers.TextOf(_app, "ComponentsText");
+        Assert.Contains("BouncyCastle.Cryptography", components, StringComparison.Ordinal);
+        Assert.Contains("CommunityToolkit.Mvvm", components, StringComparison.Ordinal);
+        Assert.Contains("MIT", components, StringComparison.Ordinal);
+
+        Assert.Contains("GPLv3", UiHelpers.TextOf(_app, "SourceText"), StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(
+            "https://github.com/feiudfyg/kasumi-cert-helper",
+            UiHelpers.TextOf(_app, "SourceLinkButton"));
+        Assert.NotNull(_app.RequireById("OpenNoticesButton"));
+    }
+
+    /// <summary>
     /// The interface language is chosen in the settings. Every XAML string is resolved while a page is
     /// parsed, so switching has to rebuild the shell; this checks both languages really render.
     /// </summary>

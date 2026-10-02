@@ -48,9 +48,14 @@
             <StackPanel Spacing="8">
                 <TextBlock Text="{x:Bind T('Settings_AboutSection')}" FontSize="18" FontWeight="SemiBold" />
                 <TextBlock x:Name="AboutText" TextWrapping="Wrap" />
+                <TextBlock x:Name="ComponentsText" TextWrapping="Wrap" FontSize="12"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                <TextBlock x:Name="SourceText" TextWrapping="Wrap" FontSize="12" />
+                <HyperlinkButton x:Name="SourceLinkButton" Padding="0" Click="OnOpenSourceClick" />
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <Button x:Name="OpenLogFolderButton" Content="{x:Bind T('Settings_OpenLogFolder')}" Click="OnOpenLogFolderClick" />
                     <Button x:Name="OpenAppDataButton" Content="{x:Bind T('Settings_OpenAppDataFolder')}" Click="OnOpenAppDataClick" />
+                    <Button x:Name="OpenNoticesButton" Content="{x:Bind T('Settings_OpenNotices')}" Click="OnOpenNoticesClick" />
                 </StackPanel>
             </StackPanel>
 

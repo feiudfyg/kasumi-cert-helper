@@ -90,12 +90,51 @@ public sealed partial class SettingsPage : Page
             ? Loc.Get("Settings_NoDatabaseYet")
             : Loc.Get("Settings_LastDatabasePrefix") + AppServices.Settings.LastDatabasePath;
 
-        AboutText.Text = Loc.Get("Settings_AboutText") + "\n" +
-                         Loc.Get("Settings_LicenseLine") + "\n" +
-                         Loc.Get("Settings_LogFilePrefix") + AppServices.LogPath;
+        AboutText.Text = string.Join('\n',
+            Loc.Get("Settings_AboutText"),
+            Loc.Get("Settings_Copyright"),
+            Loc.Get("Settings_LicenseLine"),
+            Loc.Get("Settings_LogFilePrefix") + AppServices.LogPath);
+
+        ComponentsText.Text = Loc.Get("Settings_AboutComponents");
+        SourceText.Text = Loc.Get("Settings_SourceCodeLabel");
+        SourceLinkButton.Content = ProductInfo.RepositoryUrl;
 
         PgpKeyCountText.Text = Loc.Format("Settings_PgpKeyCount", AppServices.Pgp.List().Count);
         PgpDirectoryText.Text = Loc.Get("Settings_PgpDirectoryPrefix") + AppServices.PgpDirectory;
+    }
+
+    private async void OnOpenSourceClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo(ProductInfo.RepositoryUrl) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            await DialogService.ShowErrorAsync(Loc.Get("Settings_OpenSourceFailed"), ex);
+        }
+    }
+
+    /// <summary>Shows the third party notices that travel next to the executable.</summary>
+    private async void OnOpenNoticesClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            string path = Path.Combine(AppContext.BaseDirectory, ProductInfo.NoticesFileName);
+            if (!File.Exists(path))
+            {
+                Process.Start(new ProcessStartInfo(ProductInfo.NoticesUrl) { UseShellExecute = true });
+                return;
+            }
+
+            string text = await File.ReadAllTextAsync(path);
+            await DialogService.ShowMessageAsync(Loc.Get("Settings_OpenNotices"), text);
+        }
+        catch (Exception ex)
+        {
+            await DialogService.ShowErrorAsync(Loc.Get("Settings_OpenNotices"), ex);
+        }
     }
 
     private async void OnOpenPgpFolderClick(object sender, RoutedEventArgs e)
