@@ -59,3 +59,5 @@ jobs:
             gh release create $version --title $version --generate-notes
           }
           gh release upload $version $zip --clobber
+          # Deleting a tag can leave its release as a draft; make sure it is published.
+          gh release edit $version --draft=false
