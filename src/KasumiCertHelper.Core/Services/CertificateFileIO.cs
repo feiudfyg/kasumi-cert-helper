@@ -14,7 +14,17 @@ public enum CertificateFileFormat
 
 public static class CertificateFileIO
 {
-    public static IReadOnlyList<X509Certificate2> Load(byte[] data, string? password, X509KeyStorageFlags flags = X509KeyStorageFlags.DefaultKeySet)
+    /// <summary>
+    /// Flags used when reading key material from a file. <see cref="X509KeyStorageFlags.Exportable"/>
+    /// matters because the database has to re-export the key to encrypt it with its own password: a
+    /// PFX imported with the default flags yields a Windows CNG key that can decrypt but not be
+    /// exported, which made "the passphrase is correct yet the private key cannot be unpacked" fail.
+    /// The ephemeral set keeps the temporary key out of the user profile.
+    /// </summary>
+    private const X509KeyStorageFlags DefaultKeyFlags =
+        X509KeyStorageFlags.Exportable | X509KeyStorageFlags.EphemeralKeySet;
+
+    public static IReadOnlyList<X509Certificate2> Load(byte[] data, string? password, X509KeyStorageFlags flags = DefaultKeyFlags)
     {
         ArgumentNullException.ThrowIfNull(data);
         if (data.Length == 0)
@@ -57,7 +67,7 @@ public static class CertificateFileIO
         }
     }
 
-    public static IReadOnlyList<X509Certificate2> LoadFile(string path, string? password, X509KeyStorageFlags flags = X509KeyStorageFlags.DefaultKeySet)
+    public static IReadOnlyList<X509Certificate2> LoadFile(string path, string? password, X509KeyStorageFlags flags = DefaultKeyFlags)
         => Load(File.ReadAllBytes(path), password, flags);
 
     private static IReadOnlyList<X509Certificate2> LoadPem(string text, string? password)
