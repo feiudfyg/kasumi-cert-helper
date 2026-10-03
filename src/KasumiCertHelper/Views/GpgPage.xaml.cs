@@ -192,6 +192,7 @@ public sealed partial class GpgPage : Page
             new("Fingerprint", Loc.Get("Gpg_Row_Fingerprint"), key.GroupedFingerprint, Monospace: true),
             new("KeyId", Loc.Get("Gpg_Row_KeyId"), key.KeyId),
             new("Algorithm", Loc.Get("Gpg_HeaderAlgorithm"), key.AlgorithmText),
+            new("KeyVersion", Loc.Get("Gpg_Detail_KeyVersion"), key.VersionText),
             new("Created", Loc.Get("X509_Detail_Created"), key.Created.ToString("yyyy-MM-dd HH:mm:ss")),
             new("Expires", Loc.Get("Cert_Row_NotAfter"), key.Expires is null ? Loc.Get("Gpg_NeverExpires") : key.Expires.Value.ToString("yyyy-MM-dd HH:mm:ss")),
             new("Status", Loc.Get("Cert_Row_Status"), key.StatusText),
@@ -364,10 +365,18 @@ public sealed partial class GpgPage : Page
         var algorithmBox = new ComboBox
         {
             Header = Loc.Get("Gpg_HeaderAlgorithm"),
-            ItemsSource = new[] { "Ed25519", "ECDSA (NIST)", "RSA" },
+            ItemsSource = new[] { "Ed25519", "Ed448", "ECDSA (NIST)", "RSA" },
             SelectedIndex = 0,
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
+        var versionBox = new ComboBox
+        {
+            Header = Loc.Get("Gpg_Gen_KeyVersion"),
+            ItemsSource = new[] { Loc.Get("Gpg_Version_V4"), Loc.Get("Gpg_Version_V6") },
+            SelectedIndex = 0,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+        };
+        AutomationProperties.SetAutomationId(versionBox, "GpgKeyVersionBox");
         var lengthBox = new NumberBox
         {
             Header = Loc.Get("Gpg_Gen_RsaKeySize"),
@@ -392,8 +401,17 @@ public sealed partial class GpgPage : Page
 
         algorithmBox.SelectionChanged += (_, _) =>
         {
-            curveBox.IsEnabled = algorithmBox.SelectedIndex == 1;
-            lengthBox.IsEnabled = algorithmBox.SelectedIndex == 2;
+            int selected = algorithmBox.SelectedIndex;
+            // Ed448 only exists in the RFC 9580 format, so choosing it pins the version to v6.
+            bool ed448 = selected == 1;
+            if (ed448)
+            {
+                versionBox.SelectedIndex = 1;
+            }
+
+            versionBox.IsEnabled = !ed448;
+            curveBox.IsEnabled = selected == 2;
+            lengthBox.IsEnabled = selected == 3;
         };
 
         var panel = new StackPanel { Spacing = 10, MinWidth = 340 };
@@ -406,6 +424,7 @@ public sealed partial class GpgPage : Page
         panel.Children.Add(emailBox);
         panel.Children.Add(commentBox);
         panel.Children.Add(algorithmBox);
+        panel.Children.Add(versionBox);
         panel.Children.Add(lengthBox);
         panel.Children.Add(curveBox);
         panel.Children.Add(expireBox);
@@ -439,10 +458,12 @@ public sealed partial class GpgPage : Page
             Comment = commentBox.Text?.Trim() ?? string.Empty,
             Algorithm = algorithmBox.SelectedIndex switch
             {
-                1 => OpenPgpKeyAlgorithm.Ecdsa,
-                2 => OpenPgpKeyAlgorithm.Rsa,
+                1 => OpenPgpKeyAlgorithm.Ed448,
+                2 => OpenPgpKeyAlgorithm.Ecdsa,
+                3 => OpenPgpKeyAlgorithm.Rsa,
                 _ => OpenPgpKeyAlgorithm.Ed25519,
             },
+            KeyVersion = versionBox.SelectedIndex == 1 ? OpenPgpKeyVersion.V6 : OpenPgpKeyVersion.V4,
             KeySize = double.IsNaN(lengthBox.Value) ? 3072 : (int)lengthBox.Value,
             Curve = curveBox.SelectedItem as string ?? "P-256",
             ValidDays = ParseValidity(expireBox.Text),
@@ -460,6 +481,7 @@ public sealed partial class GpgPage : Page
             generated.With(Loc.Get("Gpg_Row_NewFingerprint"), created.Fingerprint);
             generated.With(Loc.Get("Gpg_Row_KeyId"), created.KeyId);
             generated.With(Loc.Get("Gpg_Row_KeyType"), created.Algorithm);
+            generated.With(Loc.Get("Gpg_Detail_KeyVersion"), "v" + created.Version);
             generated.With(Loc.Get("Gpg_Detail_Storage"), Store.Directory);
             if (string.IsNullOrEmpty(options.Passphrase))
             {

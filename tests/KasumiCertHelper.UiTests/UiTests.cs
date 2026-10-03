@@ -353,6 +353,41 @@ public class GpgPageTests
     }
 
     [Fact]
+    public void GeneratingAV6KeyPairUsesTheRfc9580Format()
+    {
+        _app.SelectPage("OpenPGP", "KeyList");
+
+        string name = "Kasumi V6 " + Guid.NewGuid().ToString("N")[..6];
+
+        AppFixture.Activate(_app.RequireById("GenerateButton"));
+        _app.RequireById("GpgKeyNameBox", 30).AsTextBox().Enter(name);
+
+        AutomationElement versionBox = _app.RequireById("GpgKeyVersionBox", 30);
+        if (!_app.WaitUntil(() => versionBox.AsComboBox().Items.Length > 1, 20))
+        {
+            throw new InvalidOperationException("密钥格式下拉框没有 v6 项。");
+        }
+
+        versionBox.AsComboBox().Select(1);
+
+        _app.ClickButtonNamed("生成");
+        _app.ClickButtonNamed("确定", 120);
+
+        AutomationElement[] keys = UiHelpers.WaitForListItems(_app, "KeyList", TimeSpan.FromSeconds(120));
+        AutomationElement created = keys.First(k => (k.Name ?? string.Empty).Contains(name, StringComparison.Ordinal));
+
+        AppFixture.Activate(created);
+
+        Assert.True(
+            _app.WaitUntil(() => UiHelpers.TextOf(_app, "Detail_KeyVersion") == "v6", 40),
+            "生成后未显示 v6 密钥格式。\n" + _app.DumpTree(9));
+
+        // v6 fingerprints are 32 octets, shown grouped as sixteen blocks of four hex digits.
+        string fingerprint = UiHelpers.TextOf(_app, "Detail_Fingerprint");
+        Assert.Equal(16, fingerprint.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length);
+    }
+
+    [Fact]
     public void ToolbarButtonsAreReachable()
     {
         _app.SelectPage("OpenPGP", "KeyList");

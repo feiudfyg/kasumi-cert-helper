@@ -4,8 +4,20 @@ namespace KasumiCertHelper.Core.Models;
 public enum OpenPgpKeyAlgorithm
 {
     Ed25519,
+    Ed448,
     Ecdsa,
     Rsa,
+}
+
+/// <summary>
+/// OpenPGP key format. v4 is the long-established format every implementation reads; v6 is the
+/// modern format from RFC 9580, which uses 32-octet fingerprints and the Ed25519/X25519 and
+/// Ed448/X448 algorithm identifiers.
+/// </summary>
+public enum OpenPgpKeyVersion
+{
+    V4 = 4,
+    V6 = 6,
 }
 
 /// <summary>Inputs for <c>OpenPgp.GenerateKeyPair</c>.</summary>
@@ -18,6 +30,9 @@ public sealed class OpenPgpKeyOptions
     public string? Comment { get; set; }
 
     public OpenPgpKeyAlgorithm Algorithm { get; set; } = OpenPgpKeyAlgorithm.Ed25519;
+
+    /// <summary>OpenPGP key format to generate. v4 is the compatible default, v6 is RFC 9580.</summary>
+    public OpenPgpKeyVersion KeyVersion { get; set; } = OpenPgpKeyVersion.V4;
 
     /// <summary>RSA modulus size in bits.</summary>
     public int KeySize { get; set; } = 3072;
@@ -42,6 +57,7 @@ public sealed record OpenPgpKeyPair(
     string UserId,
     string Algorithm,
     int KeySize,
+    int Version,
     DateTime Created,
     DateTime? Expires,
     bool HasSecretKey,
@@ -55,6 +71,7 @@ public sealed record OpenPgpPublicKey(
     string UserId,
     string Algorithm,
     int KeySize,
+    int Version,
     DateTime Created,
     DateTime? Expires,
     bool IsRevoked,
@@ -87,6 +104,7 @@ public sealed record OpenPgpSecretKey(
     string KeyId,
     string Algorithm,
     int KeySize,
+    int Version,
     bool IsProtected,
     string Armor);
 

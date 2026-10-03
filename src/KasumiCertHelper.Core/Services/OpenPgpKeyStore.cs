@@ -243,6 +243,7 @@ public sealed class OpenPgpKeyStore
             key.UserId,
             key.Algorithm,
             key.KeySize,
+            key.Version,
             key.Created,
             key.Expires,
             HasSecretKey: secretArmor is not null,

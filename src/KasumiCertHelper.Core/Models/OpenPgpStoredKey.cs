@@ -12,6 +12,7 @@ public sealed record OpenPgpStoredKey(
     string UserId,
     string Algorithm,
     int KeySize,
+    int Version,
     DateTime Created,
     DateTime? Expires,
     bool HasSecretKey,
@@ -54,6 +55,9 @@ public sealed record OpenPgpStoredKey(
     public string SecretText => Loc.Get(HasSecretKey ? "Gpg_HasSecret" : "Gpg_PublicKey");
 
     public string AlgorithmText => KeySize > 0 ? $"{Algorithm} {KeySize}" : Algorithm;
+
+    /// <summary>The OpenPGP key format, e.g. <c>v6</c>.</summary>
+    public string VersionText => $"v{Version}";
 
     public string ExpiresText => Expires?.ToString("yyyy-MM-dd") ?? Loc.Get("Gpg_NeverExpires");
 

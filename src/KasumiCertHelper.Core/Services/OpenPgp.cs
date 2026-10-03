@@ -49,10 +49,12 @@ public static class OpenPgp
         var random = new SecureRandom();
         DateTime created = DateTime.UtcNow;
 
-        PgpKeyPair primary = CreateKeyPair(options.Algorithm, options.KeySize, options.Curve, created, random);
+        PgpKeyPair primary = CreateKeyPair(options.Algorithm, options.KeySize, options.Curve, options.KeyVersion, created, random);
         var generator = CreateRingGenerator(primary, options, random);
-        generator.AddSubKey(CreateEncryptionSubkey(options,
-            IsEd25519(primary) ? "cv25519" : options.Curve, created, random));
+        if (options.IncludeEncryptionSubkey)
+        {
+            generator.AddSubKey(CreateEncryptionSubkey(options, created, random));
+        }
 
         PgpSecretKeyRing secretRing = generator.GenerateSecretKeyRing();
         PgpPublicKeyRing publicRing = generator.GeneratePublicKeyRing();
@@ -64,6 +66,7 @@ public static class OpenPgp
             UserIdOf(publicKey),
             AlgorithmName(publicKey),
             KeySize(publicKey),
+            publicKey.Version,
             ToLocal(publicKey.CreationTime),
             ExpiryOf(publicKey),
             HasSecretKey: true,
@@ -90,6 +93,7 @@ public static class OpenPgp
             KeyId(publicKey),
             AlgorithmName(publicKey),
             KeySize(publicKey),
+            publicKey.Version,
             IsProtected: key.KeyEncryptionAlgorithm != SymmetricKeyAlgorithmTag.Null,
             armor);
     }
@@ -124,7 +128,7 @@ public static class OpenPgp
             PgpSecretKey secret = SelectSigningSecretKey(ring);
             signingKey = ExtractPrivateKey(secret, signPassphrase);
             signatureGenerator = new PgpSignatureGenerator(secret.PublicKey.Algorithm, HashAlgorithmTag.Sha512);
-            signatureGenerator.InitSign(PgpSignature.BinaryDocument, signingKey);
+            signatureGenerator.InitSign(PgpSignature.BinaryDocument, signingKey, random);
         }
 
         using var output = new MemoryStream();
@@ -254,7 +258,7 @@ public static class OpenPgp
         PgpPrivateKey privateKey = ExtractPrivateKey(secret, passphrase);
 
         var generator = new PgpSignatureGenerator(secret.PublicKey.Algorithm, HashAlgorithmTag.Sha512);
-        generator.InitSign(PgpSignature.BinaryDocument, privateKey);
+        generator.InitSign(PgpSignature.BinaryDocument, privateKey, new SecureRandom());
         generator.Update(data);
         PgpSignature signature = generator.Generate();
 
@@ -424,23 +428,41 @@ public static class OpenPgp
         OpenPgpKeyAlgorithm algorithm,
         int keySize,
         string curve,
+        OpenPgpKeyVersion version,
         DateTime created,
         SecureRandom random)
     {
+        bool v6 = version == OpenPgpKeyVersion.V6;
+
         switch (algorithm)
         {
             case OpenPgpKeyAlgorithm.Ed25519:
             {
                 var generator = new Ed25519KeyPairGenerator();
                 generator.Init(new Ed25519KeyGenerationParameters(random));
-                return new PgpKeyPair(PublicKeyAlgorithmTag.EdDsa_Legacy, generator.GenerateKeyPair(), created);
+                return Create(v6, PublicKeyAlgorithmTag.Ed25519, PublicKeyAlgorithmTag.EdDsa_Legacy,
+                    generator.GenerateKeyPair(), created);
+            }
+
+            case OpenPgpKeyAlgorithm.Ed448:
+            {
+                if (!v6)
+                {
+                    throw new ArgumentException("Ed448 keys require the v6 (RFC 9580) key format.", nameof(version));
+                }
+
+                var generator = new Ed448KeyPairGenerator();
+                generator.Init(new Ed448KeyGenerationParameters(random));
+                return Create(v6: true, PublicKeyAlgorithmTag.Ed448, PublicKeyAlgorithmTag.Ed448,
+                    generator.GenerateKeyPair(), created);
             }
 
             case OpenPgpKeyAlgorithm.Ecdsa:
             {
                 var generator = new ECKeyPairGenerator();
                 generator.Init(new ECKeyGenerationParameters(CurveOid(curve), random));
-                return new PgpKeyPair(PublicKeyAlgorithmTag.ECDsa, generator.GenerateKeyPair(), created);
+                return Create(v6, PublicKeyAlgorithmTag.ECDsa, PublicKeyAlgorithmTag.ECDsa,
+                    generator.GenerateKeyPair(), created);
             }
 
             default:
@@ -448,39 +470,75 @@ public static class OpenPgp
                 var generator = new RsaKeyPairGenerator();
                 generator.Init(new RsaKeyGenerationParameters(
                     BigInteger.ValueOf(0x10001), random, keySize <= 0 ? 3072 : keySize, 25));
-                return new PgpKeyPair(PublicKeyAlgorithmTag.RsaGeneral, generator.GenerateKeyPair(), created);
+                return Create(v6, PublicKeyAlgorithmTag.RsaGeneral, PublicKeyAlgorithmTag.RsaGeneral,
+                    generator.GenerateKeyPair(), created);
             }
         }
     }
 
     /// <summary>
-    /// The encryption subkey uses the modern curve for Ed25519 primaries and the same family as the
-    /// primary key otherwise.
+    /// Builds a v6 key pair (RFC 9580) or a v4 one. The two formats use different algorithm
+    /// identifiers for the modern curves: v4 keeps the historic <c>EdDsa_Legacy</c>/<c>ECDH</c> tags,
+    /// while v6 uses the Ed25519/X25519 identifiers RFC 9580 assigned.
+    /// </summary>
+    private static PgpKeyPair Create(
+        bool v6,
+        PublicKeyAlgorithmTag v6Tag,
+        PublicKeyAlgorithmTag v4Tag,
+        AsymmetricCipherKeyPair keyPair,
+        DateTime created)
+        => v6
+            ? new PgpKeyPair(PublicKeyPacket.Version6, v6Tag, keyPair, created)
+            : new PgpKeyPair(v4Tag, keyPair, created);
+
+    /// <summary>
+    /// The encryption subkey: v6 pairs the modern signing curve with its matching Montgomery curve
+    /// (Ed25519/X25519, Ed448/X448), v4 keeps the classic ECDH shape.
     /// </summary>
     private static PgpKeyPair CreateEncryptionSubkey(
         OpenPgpKeyOptions options,
-        string curve,
         DateTime created,
         SecureRandom random)
     {
-        if (options.Algorithm == OpenPgpKeyAlgorithm.Rsa)
-        {
-            var generator = new RsaKeyPairGenerator();
-            generator.Init(new RsaKeyGenerationParameters(
-                BigInteger.ValueOf(0x10001), random, options.KeySize <= 0 ? 3072 : options.KeySize, 25));
-            return new PgpKeyPair(PublicKeyAlgorithmTag.RsaGeneral, generator.GenerateKeyPair(), created);
-        }
+        bool v6 = options.KeyVersion == OpenPgpKeyVersion.V6;
 
-        if (curve == "cv25519")
+        switch (options.Algorithm)
         {
-            var generator = new X25519KeyPairGenerator();
-            generator.Init(new X25519KeyGenerationParameters(random));
-            return new PgpKeyPair(PublicKeyAlgorithmTag.ECDH, generator.GenerateKeyPair(), created);
-        }
+            case OpenPgpKeyAlgorithm.Rsa:
+            {
+                var generator = new RsaKeyPairGenerator();
+                generator.Init(new RsaKeyGenerationParameters(
+                    BigInteger.ValueOf(0x10001), random, options.KeySize <= 0 ? 3072 : options.KeySize, 25));
+                return Create(v6, PublicKeyAlgorithmTag.RsaGeneral, PublicKeyAlgorithmTag.RsaGeneral,
+                    generator.GenerateKeyPair(), created);
+            }
 
-        var ecdh = new ECKeyPairGenerator();
-        ecdh.Init(new ECKeyGenerationParameters(CurveOid(curve), random));
-        return new PgpKeyPair(PublicKeyAlgorithmTag.ECDH, ecdh.GenerateKeyPair(), created);
+            case OpenPgpKeyAlgorithm.Ed448:
+            {
+                var generator = new X448KeyPairGenerator();
+                generator.Init(new X448KeyGenerationParameters(random));
+                return new PgpKeyPair(PublicKeyPacket.Version6, PublicKeyAlgorithmTag.X448,
+                    generator.GenerateKeyPair(), created);
+            }
+
+            case OpenPgpKeyAlgorithm.Ed25519:
+            {
+                var generator = new X25519KeyPairGenerator();
+                generator.Init(new X25519KeyGenerationParameters(random));
+                return v6
+                    ? new PgpKeyPair(PublicKeyPacket.Version6, PublicKeyAlgorithmTag.X25519,
+                        generator.GenerateKeyPair(), created)
+                    : new PgpKeyPair(PublicKeyAlgorithmTag.ECDH, generator.GenerateKeyPair(), created);
+            }
+
+            default:
+            {
+                var generator = new ECKeyPairGenerator();
+                generator.Init(new ECKeyGenerationParameters(CurveOid(options.Curve), random));
+                return Create(v6, PublicKeyAlgorithmTag.ECDH, PublicKeyAlgorithmTag.ECDH,
+                    generator.GenerateKeyPair(), created);
+            }
+        }
     }
 
     private static PgpKeyRingGenerator CreateRingGenerator(
@@ -550,8 +608,12 @@ public static class OpenPgp
     {
         PublicKeyAlgorithmTag.RsaGeneral or PublicKeyAlgorithmTag.RsaSign or PublicKeyAlgorithmTag.RsaEncrypt => "RSA",
         PublicKeyAlgorithmTag.EdDsa_Legacy => "EdDSA",
+        PublicKeyAlgorithmTag.Ed25519 => "Ed25519",
+        PublicKeyAlgorithmTag.Ed448 => "Ed448",
         PublicKeyAlgorithmTag.ECDsa => "ECDSA",
         PublicKeyAlgorithmTag.ECDH => "ECDH",
+        PublicKeyAlgorithmTag.X25519 => "X25519",
+        PublicKeyAlgorithmTag.X448 => "X448",
         PublicKeyAlgorithmTag.Dsa => "DSA",
         PublicKeyAlgorithmTag.ElGamalGeneral or PublicKeyAlgorithmTag.ElGamalEncrypt => "ElGamal",
         _ => key.Algorithm.ToString(),
@@ -561,20 +623,13 @@ public static class OpenPgp
     {
         try
         {
-            if (key.GetKey() is RsaKeyParameters rsa)
-            {
-                return rsa.Modulus.BitLength;
-            }
+            return key.BitStrength;
         }
         catch (Exception)
         {
+            return 0;
         }
-
-        return 0;
     }
-
-    private static bool IsEd25519(PgpKeyPair key)
-        => key.PublicKey.Algorithm == PublicKeyAlgorithmTag.EdDsa_Legacy;
 
     private static string UserIdOf(PgpPublicKey key)
     {
@@ -614,6 +669,7 @@ public static class OpenPgp
             UserIdOf(ring.GetPublicKey()),
             AlgorithmName(key),
             KeySize(key),
+            key.Version,
             ToLocal(key.CreationTime),
             ExpiryOf(key),
             // BC 2.7.0 renamed this probe to HasRevocation(); the crypto-refresh fork
