@@ -136,6 +136,82 @@ public static class GnupgBridge
     }
 
     /// <summary>
+    /// Fingerprints of the primary keys in the keyring. Used to export keys one at a time, so a single
+    /// key in a format this application cannot read does not hide all the others.
+    /// </summary>
+    public static IReadOnlyList<string> ListPrimaryFingerprints(string executable, string? home)
+    {
+        var arguments = new List<string> { "--batch", "--no-tty" };
+        if (!string.IsNullOrWhiteSpace(home))
+        {
+            arguments.Add("--homedir");
+            arguments.Add(home);
+        }
+
+        arguments.Add("--with-colons");
+        arguments.Add("--list-keys");
+
+        try
+        {
+            using Process? process = Start(executable, arguments, redirectInput: false, out _);
+            if (process is null)
+            {
+                return Array.Empty<string>();
+            }
+
+            string output = process.StandardOutput.ReadToEnd();
+            process.StandardError.ReadToEnd();
+            if (!process.WaitForExit(30000))
+            {
+                TryKill(process);
+                return Array.Empty<string>();
+            }
+
+            return ParsePrimaryFingerprints(output);
+        }
+        catch (Exception)
+        {
+            return Array.Empty<string>();
+        }
+    }
+
+    /// <summary>
+    /// In colon listings a <c>pub</c> record is followed by the primary key's <c>fpr</c> record;
+    /// <c>fpr</c> records after a <c>sub</c> record belong to subkeys and are ignored.
+    /// </summary>
+    public static IReadOnlyList<string> ParsePrimaryFingerprints(string colonListing)
+    {
+        var fingerprints = new List<string>();
+        bool expectPrimary = false;
+
+        foreach (string line in colonListing.Split('\n'))
+        {
+            string[] fields = line.TrimEnd('\r').Split(':');
+            if (fields.Length == 0)
+            {
+                continue;
+            }
+
+            switch (fields[0])
+            {
+                case "pub":
+                    expectPrimary = true;
+                    break;
+                case "sub":
+                case "sec":
+                    expectPrimary = false;
+                    break;
+                case "fpr" when expectPrimary && fields.Length > 9 && fields[9].Length > 0:
+                    fingerprints.Add(fields[9]);
+                    expectPrimary = false;
+                    break;
+            }
+        }
+
+        return fingerprints;
+    }
+
+    /// <summary>
     /// Exports the whole keyring as ASCII armored OpenPGP. <paramref name="passphrase"/> is only used
     /// for secret keys and is written to gpg's standard input, never to the command line.
     /// </summary>
@@ -144,6 +220,7 @@ public static class GnupgBridge
         string? home,
         bool secretKeys,
         string? passphrase = null,
+        string? keySelector = null,
         TimeSpan? timeout = null)
     {
         var arguments = new List<string> { "--batch", "--no-tty" };
@@ -164,6 +241,10 @@ public static class GnupgBridge
 
         arguments.Add("--armor");
         arguments.Add(secretKeys ? "--export-secret-keys" : "--export");
+        if (!string.IsNullOrWhiteSpace(keySelector))
+        {
+            arguments.Add(keySelector);
+        }
 
         try
         {

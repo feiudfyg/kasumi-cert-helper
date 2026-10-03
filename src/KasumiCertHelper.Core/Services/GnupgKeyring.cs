@@ -24,7 +24,9 @@ public sealed record GnupgImportOutcome(
     bool UsedBridge,
     OpenPgpImportResult Result,
     bool SecretKeysRequested,
-    bool SecretKeysImported,
+    int SecretKeysImported,
+    int SecretKeysFailed,
+    int Failed,
     string? Error)
 {
     public bool Success => Error is null;
@@ -117,7 +119,7 @@ public static class GnupgKeyring
         if (string.IsNullOrWhiteSpace(home) || !Directory.Exists(home))
         {
             return new GnupgImportOutcome(
-                home, null, false, EmptyResult, includeSecretKeys, false, Loc.Get("Gpg_GnupgHomeMissing"));
+                home, null, false, EmptyResult, includeSecretKeys, 0, 0, 0, Loc.Get("Gpg_GnupgHomeMissing"));
         }
 
         note ??= Loc.Get("Gpg_NoteFromGnupg");
@@ -139,33 +141,85 @@ public static class GnupgKeyring
         string? passphrase,
         string note)
     {
-        string? publicKeys = GnupgBridge.Export(executable, home, secretKeys: false);
-        if (publicKeys is null)
+        IReadOnlyList<string> fingerprints = GnupgBridge.ListPrimaryFingerprints(executable, home);
+
+        ImportPass publicPass = ImportOnePass(store, executable, home, secretKeys: false, passphrase: null, fingerprints, note);
+        if (publicPass.Imported.Count == 0 && publicPass.Updated.Count == 0 && publicPass.Failed == 0)
         {
+            // The keyring could not be read at all.
             return new GnupgImportOutcome(
-                home, executable, true, EmptyResult, includeSecretKeys, false, Loc.Get("Gpg_GnupgExportFailed"));
+                home, executable, true, EmptyResult, includeSecretKeys, 0, 0, 0, Loc.Get("Gpg_GnupgExportFailed"));
         }
 
-        OpenPgpImportResult result = store.Import(publicKeys, note);
-        bool secretImported = false;
-        string? error = null;
+        ImportPass secretPass = includeSecretKeys
+            ? ImportOnePass(store, executable, home, secretKeys: true, passphrase, fingerprints, note)
+            : ImportPass.Empty;
 
-        if (includeSecretKeys)
+        OpenPgpImportResult result = Merge(publicPass.ToResult(), secretPass.ToResult());
+
+        return new GnupgImportOutcome(
+            home,
+            executable,
+            true,
+            result,
+            includeSecretKeys,
+            secretPass.Imported.Count + secretPass.Updated.Count,
+            secretPass.Failed,
+            publicPass.Failed,
+            null);
+    }
+
+    /// <summary>
+    /// Exports and imports one kind of key. A whole keyring is tried first because that is a single gpg
+    /// call; if nothing at all could be read, every key is exported on its own so that a key in an
+    /// unsupported format (GnuPG 2.4 writes v5 keys, which BouncyCastle cannot parse) only skips itself.
+    /// </summary>
+    private static ImportPass ImportOnePass(
+        OpenPgpKeyStore store,
+        string executable,
+        string home,
+        bool secretKeys,
+        string? passphrase,
+        IReadOnlyList<string> fingerprints,
+        string note)
+    {
+        string? everything = GnupgBridge.Export(executable, home, secretKeys, passphrase);
+        if (everything is not null)
         {
-            string? secretKeys = GnupgBridge.Export(executable, home, secretKeys: true, passphrase);
-            if (secretKeys is null)
+            ImportPass bulk = ImportPass.From(store.Import(everything, note));
+            if (bulk.Imported.Count > 0 || bulk.Updated.Count > 0)
             {
-                error = Loc.Get("Gpg_GnupgSecretFailed");
-            }
-            else
-            {
-                OpenPgpImportResult secretResult = store.Import(secretKeys, note);
-                result = Merge(result, secretResult);
-                secretImported = secretResult.ImportedCount > 0 || secretResult.UpdatedCount > 0;
+                return bulk;
             }
         }
 
-        return new GnupgImportOutcome(home, executable, true, result, includeSecretKeys, secretImported, error);
+        if (fingerprints.Count == 0)
+        {
+            return ImportPass.Empty;
+        }
+
+        var pass = new ImportPass();
+        foreach (string fingerprint in fingerprints)
+        {
+            string? armor = GnupgBridge.Export(executable, home, secretKeys, passphrase, fingerprint);
+            if (armor is null)
+            {
+                pass.Failed++;
+                continue;
+            }
+
+            ImportPass one = ImportPass.From(store.Import(armor, note));
+            if (one.Imported.Count == 0 && one.Updated.Count == 0)
+            {
+                // gpg handed out a key, but it is in a format that cannot be read.
+                pass.Failed++;
+                continue;
+            }
+
+            pass.Add(one);
+        }
+
+        return pass;
     }
 
     private static GnupgImportOutcome ImportExportedFiles(OpenPgpKeyStore store, string home, string note)
@@ -174,37 +228,73 @@ public static class GnupgKeyring
         if (files.Count == 0)
         {
             return new GnupgImportOutcome(
-                home, null, false, EmptyResult, false, false, Loc.Get("Gpg_GnupgNeedsExecutable"));
+                home, null, false, EmptyResult, false, 0, 0, 0, Loc.Get("Gpg_GnupgNeedsExecutable"));
         }
 
-        var imported = new List<string>();
-        var updated = new List<string>();
-        var skipped = new List<string>();
-
+        var pass = new ImportPass();
         foreach (string file in files)
         {
             try
             {
-                OpenPgpImportResult result = store.Import(File.ReadAllText(file), note);
-                imported.AddRange(result.Imported);
-                updated.AddRange(result.Updated);
-                skipped.AddRange(result.Skipped);
+                pass.Add(ImportPass.From(store.Import(File.ReadAllText(file), note)));
             }
             catch (Exception)
             {
-                skipped.Add(Path.GetFileName(file));
+                pass.Failed++;
             }
         }
 
-        var combined = new OpenPgpImportResult(imported, updated, skipped);
         return new GnupgImportOutcome(
             home,
             null,
             false,
-            combined,
+            pass.ToResult(),
             false,
-            false,
-            imported.Count == 0 && updated.Count == 0 ? Loc.Get("Gpg_GnupgNeedsExecutable") : null);
+            0,
+            0,
+            pass.Failed,
+            pass.Imported.Count == 0 && pass.Updated.Count == 0 ? Loc.Get("Gpg_GnupgNeedsExecutable") : null);
+    }
+
+    /// <summary>Accumulates what happened to the keys of one import pass.</summary>
+    private sealed class ImportPass
+    {
+        public List<string> Imported { get; } = new();
+
+        public List<string> Updated { get; } = new();
+
+        public List<string> Skipped { get; } = new();
+
+        public int Failed { get; set; }
+
+        public static ImportPass Empty => new();
+
+        public static ImportPass From(OpenPgpImportResult result)
+        {
+            var pass = new ImportPass();
+            pass.Add(result);
+            return pass;
+        }
+
+        public void Add(ImportPass other)
+        {
+            Imported.AddRange(other.Imported);
+            Updated.AddRange(other.Updated);
+            Skipped.AddRange(other.Skipped);
+            Failed += other.Failed;
+        }
+
+        private void Add(OpenPgpImportResult result)
+        {
+            Imported.AddRange(result.Imported);
+            Updated.AddRange(result.Updated);
+            Skipped.AddRange(result.Skipped);
+        }
+
+        public OpenPgpImportResult ToResult()
+            => new(Imported.Distinct(StringComparer.Ordinal).ToList(),
+                   Updated.Distinct(StringComparer.Ordinal).ToList(),
+                   Skipped.Distinct(StringComparer.Ordinal).ToList());
     }
 
     private static OpenPgpImportResult EmptyResult { get; } = new(

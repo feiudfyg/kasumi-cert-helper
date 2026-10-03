@@ -62,7 +62,7 @@ internal static class GnupgImportFlow
         {
             Title = Loc.Get("Gpg_ImportGnupgTitle"),
             Content = content,
-            PrimaryButtonText = Loc.Get("Gpg_ImportGnupg"),
+            PrimaryButtonText = Loc.Get("Common_Ok"),
             CloseButtonText = Loc.Get("Common_Cancel"),
             DefaultButton = ContentDialogButton.Primary,
         };
@@ -84,10 +84,11 @@ internal static class GnupgImportFlow
 
     private static async Task ShowOutcomeAsync(GnupgImportOutcome outcome)
     {
+        int total = outcome.Result.ImportedCount + outcome.Result.UpdatedCount;
         var report = new GpgOperationReport("import-gnupg")
         {
             Title = outcome.FoundSomething
-                ? Loc.Format("Gpg_GnupgImported", outcome.Result.ImportedCount + outcome.Result.UpdatedCount)
+                ? Loc.Format("Gpg_GnupgImported", total)
                 : Loc.Get("Gpg_ImportGnupgTitle"),
             Success = outcome.FoundSomething,
             Severity = outcome.Success
@@ -116,19 +117,35 @@ internal static class GnupgImportFlow
             report.With(Loc.Get("Gpg_Row_NotImported"), Loc.Format("Gpg_Value_Count", outcome.Result.SkippedCount), GpgReportSeverity.Warning);
         }
 
+        if (outcome.Failed > 0)
+        {
+            report.With(Loc.Get("Gpg_GnupgFailedRow"), Loc.Format("Gpg_Value_Count", outcome.Failed), GpgReportSeverity.Warning);
+        }
+
         if (outcome.SecretKeysRequested)
         {
             report.With(
                 Loc.Get("Gpg_GnupgSecretRow"),
-                Loc.Get(outcome.SecretKeysImported ? "Common_Yes" : "Common_No"),
-                outcome.SecretKeysImported ? GpgReportSeverity.Info : GpgReportSeverity.Warning);
+                Loc.Format("Gpg_Value_Count", outcome.SecretKeysImported),
+                outcome.SecretKeysImported > 0 ? GpgReportSeverity.Info : GpgReportSeverity.Warning);
         }
 
         if (outcome.Error is not null)
         {
             report.Note(outcome.Error);
         }
-        else if (!outcome.FoundSomething)
+
+        if (outcome.Failed > 0)
+        {
+            report.Note(Loc.Format("Gpg_GnupgKeyTooNew", outcome.Failed));
+        }
+
+        if (outcome.SecretKeysFailed > 0)
+        {
+            report.Note(Loc.Get("Gpg_GnupgSecretFailed"));
+        }
+
+        if (!outcome.FoundSomething && outcome.Error is null)
         {
             report.Note(Loc.Get("Gpg_GnupgNothing"));
         }

@@ -1,6 +1,8 @@
 using Windows.Storage.Pickers;
 
 using KasumiCertHelper.Core.Localization;
+using KasumiCertHelper.Core.Services;
+
 
 namespace KasumiCertHelper.Services;
 
@@ -24,7 +26,7 @@ public static class FilePickerHelper
         };
         foreach (string extension in extensions.Length == 0 ? CertificateExtensions : extensions)
         {
-            picker.FileTypeFilter.Add(Normalize(extension));
+            picker.FileTypeFilter.Add(FileFilters.Extension(extension));
         }
 
         WinRT.Interop.InitializeWithWindow.Initialize(picker, handle);
@@ -47,7 +49,7 @@ public static class FilePickerHelper
         };
         foreach (string extension in extensions.Length == 0 ? CertificateExtensions : extensions)
         {
-            picker.FileTypeFilter.Add(Normalize(extension));
+            picker.FileTypeFilter.Add(FileFilters.Extension(extension));
         }
 
         WinRT.Interop.InitializeWithWindow.Initialize(picker, handle);
@@ -72,13 +74,13 @@ public static class FilePickerHelper
 
         if (fileTypes.Length == 0)
         {
-            picker.FileTypeChoices.Add(CertificateFilterName, CertificateExtensions.ToList());
+            picker.FileTypeChoices.Add(CertificateFilterName, CertificateExtensions.Select(FileFilters.Extension).ToList());
         }
         else
         {
             foreach ((string name, string[] extensions) in fileTypes)
             {
-                picker.FileTypeChoices.Add(name, extensions.Select(Normalize).ToList());
+                picker.FileTypeChoices.Add(name, extensions.Select(FileFilters.Extension).ToList());
             }
         }
 
@@ -105,6 +107,4 @@ public static class FilePickerHelper
     private static nint GetWindowHandle()
         => App.MainWindow is null ? 0 : WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
 
-    private static string Normalize(string extension)
-        => extension.StartsWith('.') ? "*" + extension : "*." + extension;
 }

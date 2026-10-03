@@ -106,7 +106,44 @@ public sealed class GnupgKeyringTests : IDisposable
         Assert.True(imported.HasSecretKey, "the unprotected secret key should have been imported as well");
     }
 
+    /// <summary>
+    /// GnuPG wraps every exported key in a single ASCII armor block, so the importer has to walk the
+    /// whole stream instead of stopping after the first key ring.
+    /// </summary>
+    [Fact]
+    public void ImportsEveryKeyOfAMultiKeyGnuPgExport()
+    {
+        string? executable = GnupgBridge.FindExecutable();
+        if (executable is null)
+        {
+            return;
+        }
+
+        Environment.SetEnvironmentVariable("GNUPGHOME", _directory);
+        (bool first, string firstError) = GenerateKey(executable, _directory, "Kasumi First <kasumi-first@example.com>");
+        Assert.True(first, $"gpg could not generate the first test key: {firstError}");
+        (bool second, string secondError) = GenerateKey(executable, _directory, "Kasumi Second <kasumi-second@example.com>");
+        Assert.True(second, $"gpg could not generate the second test key: {secondError}");
+
+        string? exported = GnupgBridge.Export(executable, _directory, secretKeys: false);
+        Assert.False(string.IsNullOrWhiteSpace(exported), "gpg exported nothing");
+
+        using var store = new TempStore(Path.Combine(_directory, "multi-store"));
+        OpenPgpImportResult result = store.Store.Import(exported!);
+
+        Assert.Equal(2, result.ImportedCount);
+
+        // And the whole flow reports the same, with nothing counted as unreadable.
+        using var secondStore = new TempStore(Path.Combine(_directory, "multi-store-2"));
+        GnupgImportOutcome outcome = GnupgKeyring.Import(secondStore.Store, _directory);
+        Assert.Equal(2, outcome.Result.ImportedCount);
+        Assert.Equal(0, outcome.Failed);
+        Assert.Contains(secondStore.Store.List(), key => key.UserId.Contains("Kasumi First", StringComparison.Ordinal));
+        Assert.Contains(secondStore.Store.List(), key => key.UserId.Contains("Kasumi Second", StringComparison.Ordinal));
+    }
+
     private static (bool Success, string Error) GenerateKey(string executable, string home, string userId)
+
     {
         var info = new ProcessStartInfo(executable)
         {
