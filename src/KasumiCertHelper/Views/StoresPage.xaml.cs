@@ -60,9 +60,9 @@ public sealed partial class StoresPage : Page
     {
         Columns.Deserialize(Settings.GetLayout(ColumnsKey));
 
-        ContentGrid.ColumnDefinitions[0].Width = new GridLength(
+        StorePaneColumn.Width = new GridLength(
             Settings.GetLayoutDouble(StorePaneKey, 230), GridUnitType.Pixel);
-        MainGrid.RowDefinitions[5].Height = new GridLength(
+        DetailsRow.Height = new GridLength(
             Settings.GetLayoutDouble(DetailsPaneKey, 260), GridUnitType.Pixel);
 
         _detailsVisible = Settings.GetLayoutBool(DetailsVisibleKey, true);
@@ -72,10 +72,10 @@ public sealed partial class StoresPage : Page
     private void PersistLayout()
     {
         Settings.SetLayout(ColumnsKey, Columns.Serialize());
-        Settings.SetLayoutDouble(StorePaneKey, ContentGrid.ColumnDefinitions[0].ActualWidth);
+        Settings.SetLayoutDouble(StorePaneKey, StorePaneColumn.ActualWidth);
         if (_detailsVisible)
         {
-            Settings.SetLayoutDouble(DetailsPaneKey, MainGrid.RowDefinitions[5].ActualHeight);
+            Settings.SetLayoutDouble(DetailsPaneKey, DetailsRow.ActualHeight);
         }
         Settings.SetLayoutBool(DetailsVisibleKey, _detailsVisible);
     }
@@ -97,8 +97,8 @@ public sealed partial class StoresPage : Page
     private void OnStoreSplitterDrag(object sender, ManipulationDeltaRoutedEventArgs e)
     {
         double maximum = Math.Max(220, ContentGrid.ActualWidth - 320);
-        ContentGrid.ColumnDefinitions[0].Width = new GridLength(
-            Math.Clamp(ContentGrid.ColumnDefinitions[0].ActualWidth + e.Delta.Translation.X, 160, maximum),
+        StorePaneColumn.Width = new GridLength(
+            Math.Clamp(StorePaneColumn.ActualWidth + e.Delta.Translation.X, 160, maximum),
             GridUnitType.Pixel);
         PersistLayout();
     }
@@ -106,8 +106,8 @@ public sealed partial class StoresPage : Page
     private void OnDetailsSplitterDrag(object sender, ManipulationDeltaRoutedEventArgs e)
     {
         double maximum = Math.Max(200, MainGrid.ActualHeight - 180);
-        MainGrid.RowDefinitions[5].Height = new GridLength(
-            Math.Clamp(MainGrid.RowDefinitions[5].ActualHeight - e.Delta.Translation.Y, 120, maximum),
+        DetailsRow.Height = new GridLength(
+            Math.Clamp(DetailsRow.ActualHeight - e.Delta.Translation.Y, 120, maximum),
             GridUnitType.Pixel);
         PersistLayout();
     }
@@ -137,7 +137,7 @@ public sealed partial class StoresPage : Page
 
     private void ApplyDetailsVisibility()
     {
-        MainGrid.RowDefinitions[5].Height = _detailsVisible
+        DetailsRow.Height = _detailsVisible
             ? new GridLength(Settings.GetLayoutDouble(DetailsPaneKey, 260), GridUnitType.Pixel)
             : new GridLength(0);
 

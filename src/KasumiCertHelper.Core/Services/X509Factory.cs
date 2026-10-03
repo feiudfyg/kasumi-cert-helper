@@ -9,6 +9,22 @@ public static class X509Factory
 {
     public static readonly string[] HashAlgorithms = { "SHA256", "SHA384", "SHA512", "SHA1" };
 
+    /// <summary>A signature hash for a combo box: the stored value and the text to show for it.</summary>
+    public sealed record HashAlgorithmChoice(string Value, string Display);
+
+    /// <summary>
+    /// SHA-1 stays available only for interoperability with systems that cannot do better, so the list
+    /// says so instead of offering it as if it were a normal choice.
+    /// </summary>
+    public static IReadOnlyList<HashAlgorithmChoice> HashAlgorithmChoices() =>
+        HashAlgorithms
+            .Select(name => new HashAlgorithmChoice(
+                name,
+                string.Equals(name, "SHA1", StringComparison.OrdinalIgnoreCase)
+                    ? Loc.Format("X509_HashAlgorithmLegacy", name)
+                    : name))
+            .ToList();
+
     public static readonly string[] EcdsaCurves =
     {
         "nistP256", "nistP384", "nistP521", "secp256k1", "brainpoolP256r1", "brainpoolP384r1", "brainpoolP512r1",
@@ -89,6 +105,46 @@ public static class X509Factory
         return serial;
     }
 
+    /// <summary>What a PEM text holds; a file may combine a key with its certificate.</summary>
+    [Flags]
+    public enum PemContentKind
+    {
+        None = 0,
+        PrivateKey = 1,
+        Csr = 2,
+        Certificate = 4,
+    }
+
+    /// <summary>
+    /// Classifies PEM text. "CERTIFICATE REQUEST" contains "BEGIN CERTIFICATE", so the markers have to
+    /// be matched in full, otherwise a CSR would also be read as a certificate.
+    /// </summary>
+    public static PemContentKind ClassifyPem(string? text)
+    {
+        if (string.IsNullOrEmpty(text) || !text.Contains("-----BEGIN", StringComparison.Ordinal))
+        {
+            return PemContentKind.None;
+        }
+
+        PemContentKind kind = PemContentKind.None;
+        if (text.Contains("PRIVATE KEY", StringComparison.Ordinal))
+        {
+            kind |= PemContentKind.PrivateKey;
+        }
+
+        bool isCsr = text.Contains("CERTIFICATE REQUEST", StringComparison.Ordinal);
+        if (isCsr)
+        {
+            kind |= PemContentKind.Csr;
+        }
+        else if (text.Contains("-----BEGIN CERTIFICATE-----", StringComparison.Ordinal))
+        {
+            kind |= PemContentKind.Certificate;
+        }
+
+        return kind;
+    }
+
     public static byte[]? ParseSerial(string? hex)
     {
         if (string.IsNullOrWhiteSpace(hex))
@@ -104,7 +160,29 @@ public static class X509Factory
         {
             cleaned = "0" + cleaned;
         }
-        return Convert.FromHexString(cleaned);
+
+        byte[] serial = Convert.FromHexString(cleaned);
+
+        // A certificate serial is a DER INTEGER, so it has to be positive and non-zero: leading zero
+        // bytes are dropped, a set sign bit gets a zero byte in front of it, and "0" becomes 1.
+        int start = 0;
+        while (start < serial.Length - 1 && serial[start] == 0)
+        {
+            start++;
+        }
+        serial = serial[start..];
+
+        if (serial.All(b => b == 0))
+        {
+            return new byte[] { 0x01 };
+        }
+        if ((serial[0] & 0x80) != 0)
+        {
+            byte[] positive = new byte[serial.Length + 1];
+            serial.CopyTo(positive, 1);
+            return positive;
+        }
+        return serial;
     }
 
     public static X509SignatureGenerator CreateSignatureGenerator(AsymmetricAlgorithm key, HashAlgorithmName hash)

@@ -10,6 +10,33 @@ namespace KasumiCertHelper.Core.Tests;
 /// </summary>
 public class OpenPgpSpikeTests
 {
+    /// <summary>
+    /// The decrypt page uses this to load only the secret keys a message could belong to, so the key
+    /// ids it reports have to be the ones in the ring (an Ed25519 key encrypts through its subkey).
+    /// </summary>
+    [Fact]
+    public void ReportsTheKeyIdsAnEncryptedMessageIsAddressedTo()
+    {
+        OpenPgpKeyPair key = OpenPgp.GenerateKeyPair(new OpenPgpKeyOptions
+        {
+            Name = "Recipient",
+            Email = "recipient@example.com",
+            Algorithm = OpenPgpKeyAlgorithm.Ed25519,
+        });
+
+        byte[] encrypted = OpenPgp.Encrypt(
+            Encoding.UTF8.GetBytes("for a subkey"), new[] { key.PublicKeyArmor }, armor: true);
+
+        IReadOnlyList<string> recipients = OpenPgp.RecipientKeyIds(encrypted);
+        IReadOnlyList<string> ringIds = OpenPgp.KeyIdsOfPublicKey(key.PublicKeyArmor);
+
+        Assert.NotEmpty(recipients);
+        Assert.All(recipients, id => Assert.Contains(id, ringIds));
+        Assert.Equal("for a subkey", Encoding.UTF8.GetString(OpenPgp.Decrypt(encrypted, key.SecretKeyArmor, null)));
+
+        // Data that is not an encrypted message reports nothing instead of throwing.
+        Assert.Empty(OpenPgp.RecipientKeyIds(Encoding.UTF8.GetBytes("plain text")));
+    }
     [Fact]
     public void GeneratesEncryptsDecryptsSignsAndVerifies()
     {

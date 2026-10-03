@@ -39,6 +39,32 @@ public class OpenPgpKeyStoreTests : IDisposable
             ValidDays = 365,
         });
 
+    /// <summary>
+    /// A signature names the key that made it, which is often a subkey, so a stored key has to be
+    /// identifiable by every key id in its ring.
+    /// </summary>
+    [Fact]
+    public void AStoredKeyIsKnownByItsPrimaryAndSubkeyIds()
+    {
+        OpenPgpKeyStore store = CreateStore();
+        store.Add(Generate("subkey@example.com"));
+
+        OpenPgpStoredKey key = Assert.Single(store.List());
+        IReadOnlyList<string> ids = key.KeyIds;
+
+        Assert.True(ids.Count >= 2, $"生成的密钥应包含主密钥和加密子密钥，实际只有 {ids.Count} 个 key id。");
+        Assert.Equal(key.KeyId, ids[0]);
+        Assert.Equal(ids.Distinct().Count(), ids.Count);
+
+        foreach (string id in ids)
+        {
+            Assert.True(key.HasKeyId(id.ToLowerInvariant()), $"无法用 {id} 找到密钥。");
+        }
+
+        Assert.True(key.HasKeyId(key.Fingerprint[^16..]));
+        Assert.False(key.HasKeyId("DEADBEEFDEADBEEF"));
+    }
+
     [Fact]
     public void StoresAndListsAGeneratedKey()
     {

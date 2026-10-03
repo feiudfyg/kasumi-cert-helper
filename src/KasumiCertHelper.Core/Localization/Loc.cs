@@ -150,7 +150,8 @@ public static class Loc
         }
     }
 
-    private static Dictionary<string, Dictionary<string, string>> LoadTables()    {
+    private static Dictionary<string, Dictionary<string, string>> LoadTables()
+    {
         var tables = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
         Assembly assembly = typeof(Loc).Assembly;
 

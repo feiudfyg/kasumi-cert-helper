@@ -10,7 +10,11 @@ namespace KasumiCertHelper.Controls;
 
 public sealed record DetailItem(string Key, string Label, string Value, bool Monospace = false);
 
-public sealed record DetailSection(string Title, IReadOnlyList<DetailItem> Items, bool Expanded = false);
+/// <summary>
+/// <paramref name="Key"/> is a stable, language independent identifier: it becomes the automation id
+/// so the UI tests do not have to know the localized title.
+/// </summary>
+public sealed record DetailSection(string Key, string Title, IReadOnlyList<DetailItem> Items, bool Expanded = false);
 
 /// <summary>
 /// Renders parsed facts as labelled rows instead of one wall of monospaced text. Every value gets
@@ -38,7 +42,8 @@ public static class DetailPresenter
                 HorizontalContentAlignment = HorizontalAlignment.Stretch,
                 Content = BuildGrid(section.Items),
             };
-            AutomationProperties.SetAutomationId(expander, "Section_" + section.Title);
+            AutomationProperties.SetAutomationId(expander, "Section_" + section.Key);
+            AutomationProperties.SetName(expander, section.Title);
             host.Children.Add(expander);
         }
     }
@@ -97,11 +102,11 @@ public static class DetailPresenter
 
         return new[]
         {
-            new DetailSection(Loc.Get("Detail_Section_Basic"), basic, Expanded: true),
-            new DetailSection(Loc.Get("Detail_Section_Validity"), validity, Expanded: true),
-            new DetailSection(Loc.Get("Detail_Section_Key"), key),
-            new DetailSection(Loc.Get("Detail_Section_Extensions"), extensions),
-            new DetailSection(Loc.Get("Detail_Section_Raw"), raw),
+            new DetailSection("Basic", Loc.Get("Detail_Section_Basic"), basic, Expanded: true),
+            new DetailSection("Validity", Loc.Get("Detail_Section_Validity"), validity, Expanded: true),
+            new DetailSection("PublicKey", Loc.Get("Detail_Section_Key"), key),
+            new DetailSection("Extensions", Loc.Get("Detail_Section_Extensions"), extensions),
+            new DetailSection("Raw", Loc.Get("Detail_Section_Raw"), raw),
         };
     }
 

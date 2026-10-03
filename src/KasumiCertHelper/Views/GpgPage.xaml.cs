@@ -203,8 +203,8 @@ public sealed partial class GpgPage : Page
 
         return new List<DetailSection>
         {
-            new(Loc.Get("Detail_Section_Basic"), basic, Expanded: true),
-            new(Loc.Get("Gpg_Detail_PublicKeySection"), new[]
+            new("Basic", Loc.Get("Detail_Section_Basic"), basic, Expanded: true),
+            new("PublicKey", Loc.Get("Gpg_Detail_PublicKeySection"), new[]
             {
                 new DetailItem("PublicArmor", Loc.Get("X509_Detail_PublicKeyPem"), key.PublicKeyArmor, Monospace: true),
             }),
@@ -798,9 +798,20 @@ public sealed partial class GpgPage : Page
             return;
         }
 
-        // Every secret key is offered to the engine, which picks the one the message was made for.
-        string secrets = string.Concat(_all
-            .Where(k => k.HasSecretKey)
+        byte[] payload = await File.ReadAllBytesAsync(inputPath);
+
+        // Only the secret keys the message is addressed to are offered to the engine, so a large
+        // keyring does not have to be read and parsed for every decryption.
+        IReadOnlyList<string> recipients = OpenPgp.RecipientKeyIds(payload);
+        List<OpenPgpStoredKey> candidates = _all
+            .Where(k => k.HasSecretKey && (recipients.Count == 0 || recipients.Any(id => k.HasKeyId(id))))
+            .ToList();
+        if (candidates.Count == 0)
+        {
+            candidates = _all.Where(k => k.HasSecretKey).ToList();
+        }
+
+        string secrets = string.Concat(candidates
             .Select(k => Store.GetSecretArmor(k.Fingerprint))
             .Where(armor => !string.IsNullOrEmpty(armor)));
 
@@ -827,7 +838,7 @@ public sealed partial class GpgPage : Page
 
         await RunAsync(Loc.Get("Gpg_DecryptFile"), () =>
         {
-            byte[] data = OpenPgp.Decrypt(File.ReadAllBytes(inputPath), secrets, secret);
+            byte[] data = OpenPgp.Decrypt(payload, secrets, secret);
             File.WriteAllBytes(outputPath, data);
 
             var report = Report("decrypt", true, Loc.Get("Gpg_Decrypt_Done"));
@@ -974,8 +985,7 @@ public sealed partial class GpgPage : Page
         }
 
         string keyId = OpenPgp.KeyIdOfSignature(signature);
-        OpenPgpStoredKey? signer = _all.FirstOrDefault(k =>
-            string.Equals(k.KeyId, keyId, StringComparison.OrdinalIgnoreCase));
+        OpenPgpStoredKey? signer = _all.FirstOrDefault(k => k.HasKeyId(keyId));
 
         if (signer is null)
         {

@@ -15,11 +15,30 @@ public sealed class X509DatabasePayload
 
     public string? Description { get; set; }
 
+    /// <summary>
+    /// A salted hash of the database password, so an empty database can still tell passwords apart.
+    /// Older files have none; they are validated against the first private key instead.
+    /// </summary>
+    public string? PasswordCheck { get; set; }
+
     public List<X509Item> Items { get; set; } = new();
+}
+
+/// <summary>The password does not open the database.</summary>
+public sealed class WrongPasswordException : Exception
+{
+    public WrongPasswordException()
+        : base(Loc.Get("X509_ErrorWrongPassword"))
+    {
+    }
 }
 
 public sealed class X509Database
 {
+    private const int PasswordCheckIterations = 100_000;
+    private const int PasswordCheckSaltBytes = 16;
+    private const int PasswordCheckHashBytes = 32;
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,
@@ -27,11 +46,13 @@ public sealed class X509Database
     };
 
     private string _password;
+    private string? _passwordCheck;
 
-    private X509Database(string filePath, string password)
+    private X509Database(string filePath, string password, string? passwordCheck)
     {
         FilePath = filePath;
         _password = password;
+        _passwordCheck = passwordCheck;
     }
 
     public string FilePath { get; }
@@ -40,16 +61,17 @@ public sealed class X509Database
 
     public ObservableCollection<X509Item> Items { get; private set; } = new();
 
-    public string Password => _password;
+    /// <summary>Only for the launcher and the settings page; never logged or written anywhere.</summary>
+    internal string Password => _password;
 
     public static X509Database Create(string filePath, string password)
     {
-        var database = new X509Database(filePath, password);
+        var database = new X509Database(filePath, password, CreatePasswordCheck(password));
         database.Save();
         return database;
     }
 
-    public static X509Database Open(string filePath, string password)
+    public static X509Database Open(string filePath, string password, bool validatePassword = true)
     {
         if (!File.Exists(filePath))
         {
@@ -59,16 +81,37 @@ public sealed class X509Database
         string json = File.ReadAllText(filePath, Encoding.UTF8);
         X509DatabasePayload payload = JsonSerializer.Deserialize<X509DatabasePayload>(json, JsonOptions)
                                       ?? new X509DatabasePayload();
-        var database = new X509Database(filePath, password)
+        var database = new X509Database(filePath, password, payload.PasswordCheck)
         {
             Items = new ObservableCollection<X509Item>(payload.Items),
         };
+
+        if (validatePassword && !database.ValidatePassword(password))
+        {
+            throw new WrongPasswordException();
+        }
+
+        // A file written before the check existed: the password was just proven by decrypting a key,
+        // so it is safe to remember it. An empty legacy file proves nothing, so it keeps the old
+        // lenient behaviour of accepting any password.
+        if (database._passwordCheck is null && database.Items.Any(i => i.HasPrivateKey))
+        {
+            database._passwordCheck = CreatePasswordCheck(password);
+            database.Save();
+        }
+
         return database;
     }
 
+
     public void Save()
     {
-        var payload = new X509DatabasePayload { Version = 1, Items = Items.ToList() };
+        var payload = new X509DatabasePayload
+        {
+            Version = 1,
+            PasswordCheck = _passwordCheck,
+            Items = Items.ToList(),
+        };
         string json = JsonSerializer.Serialize(payload, JsonOptions);
         string? directory = Path.GetDirectoryName(FilePath);
         if (!string.IsNullOrEmpty(directory))
@@ -231,6 +274,13 @@ public sealed class X509Database
 
     public bool ValidatePassword(string password)
     {
+        if (_passwordCheck is not null)
+        {
+            return PasswordCheckMatches(password, _passwordCheck);
+        }
+
+        // A file from before the password check was stored: the only way to test the password is to
+        // decrypt a private key. With no private key there is nothing to test, so anything is accepted.
         X509Item? keyItem = Items.FirstOrDefault(i => i.HasPrivateKey);
         if (keyItem is null)
         {
@@ -248,14 +298,49 @@ public sealed class X509Database
         }
     }
 
-    public void ChangePassword(string oldPassword, string newPassword)    {
+    public void ChangePassword(string oldPassword, string newPassword)
+    {
         foreach (X509Item item in Items.Where(i => i.HasPrivateKey).ToList())
         {
             using AsymmetricAlgorithm key = LoadKey(item, oldPassword);
             item.EncryptedKeyPem = key.ExportEncryptedPkcs8PrivateKeyPem(newPassword, CertificateKeyIO.DefaultPbe);
         }
         _password = newPassword;
+        _passwordCheck = CreatePasswordCheck(newPassword);
         Save();
+    }
+
+    private static string CreatePasswordCheck(string password)
+    {
+        byte[] salt = RandomNumberGenerator.GetBytes(PasswordCheckSaltBytes);
+        byte[] hash = Rfc2898DeriveBytes.Pbkdf2(
+            password, salt, PasswordCheckIterations, HashAlgorithmName.SHA256, PasswordCheckHashBytes);
+        return $"{Convert.ToBase64String(salt)}:{Convert.ToBase64String(hash)}";
+    }
+
+    private static bool PasswordCheckMatches(string password, string check)
+    {
+        string[] parts = check.Split(':');
+        if (parts.Length != 2)
+        {
+            return false;
+        }
+
+        byte[] salt;
+        byte[] expected;
+        try
+        {
+            salt = Convert.FromBase64String(parts[0]);
+            expected = Convert.FromBase64String(parts[1]);
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+
+        byte[] actual = Rfc2898DeriveBytes.Pbkdf2(
+            password, salt, PasswordCheckIterations, HashAlgorithmName.SHA256, expected.Length);
+        return CryptographicOperations.FixedTimeEquals(actual, expected);
     }
 
     private static (string? Algorithm, int? Size) GetKeyInfo(X509Certificate2 certificate)

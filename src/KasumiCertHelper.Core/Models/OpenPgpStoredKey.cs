@@ -20,7 +20,8 @@ public sealed record OpenPgpStoredKey(
     bool CanEncrypt,
     bool CanSign,
     string? Note,
-    string PublicKeyArmor)
+    string PublicKeyArmor,
+    IReadOnlyList<string> KeyIds)
 {
     public string ShortFingerprint => Fingerprint.Length >= 16 ? Fingerprint[^16..] : Fingerprint;
 
@@ -39,6 +40,11 @@ public sealed record OpenPgpStoredKey(
     }
 
     public bool IsExpired => Expires is not null && Expires.Value < DateTime.Now;
+
+    /// <summary>True when the signature was made by this key or by one of its subkeys.</summary>
+    public bool HasKeyId(string keyId) =>
+        KeyIds.Any(id => string.Equals(id, keyId, StringComparison.OrdinalIgnoreCase))
+        || string.Equals(KeyId, keyId, StringComparison.OrdinalIgnoreCase);
 
     public string StatusText => Loc.Get(
         IsRevoked ? "Gpg_State_Revoked"

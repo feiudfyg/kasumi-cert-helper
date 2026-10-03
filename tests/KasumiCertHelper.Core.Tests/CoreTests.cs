@@ -161,6 +161,130 @@ public class X509GenerationTests
             if (Directory.Exists(directory)) Directory.Delete(directory, true);
         }
     }
+
+    [Fact]
+    public void Database_RejectsTheWrongPasswordEvenWithoutAnyPrivateKey()
+    {
+        string directory = Path.Combine(Path.GetTempPath(), "kasumi-db-pw-" + Guid.NewGuid().ToString("N"));
+        string file = Path.Combine(directory, "empty.kdb");
+        try
+        {
+            X509Database created = X509Database.Create(file, "correct-horse");
+            Assert.Empty(created.Items);
+
+            Assert.True(X509Database.Open(file, "correct-horse").ValidatePassword("correct-horse"));
+            Assert.False(X509Database.Open(file, "correct-horse").ValidatePassword("wrong"));
+            Assert.Throws<WrongPasswordException>(() => X509Database.Open(file, "wrong"));
+            Assert.False(X509Database.Open(file, "correct-horse").ValidatePassword("Wrong"));
+        }
+        finally
+        {
+            if (Directory.Exists(directory)) Directory.Delete(directory, true);
+        }
+    }
+
+    [Fact]
+    public void Database_RemembersANewPassword()
+    {
+        string directory = Path.Combine(Path.GetTempPath(), "kasumi-db-pw2-" + Guid.NewGuid().ToString("N"));
+        string file = Path.Combine(directory, "change.kdb");
+        try
+        {
+            X509Database database = X509Database.Create(file, "first-password");
+            using AsymmetricAlgorithm key = X509Factory.CreateKey(new X509KeyOptions { Algorithm = X509KeyAlgorithm.Ecdsa });
+            database.AddKey("测试密钥", key);
+
+            database.ChangePassword("first-password", "second-password");
+
+            Assert.Throws<WrongPasswordException>(() => X509Database.Open(file, "first-password"));
+            X509Database reopened = X509Database.Open(file, "second-password");
+            Assert.Single(reopened.Items);
+        }
+        finally
+        {
+            if (Directory.Exists(directory)) Directory.Delete(directory, true);
+        }
+    }
+
+    [Theory]
+    [InlineData("01", "01")]
+    [InlineData("00", "01")]
+    [InlineData("0000", "01")]
+    [InlineData("7F", "7F")]
+    [InlineData("FF", "00FF")]
+    [InlineData("00FF", "00FF")]
+    [InlineData("ABCD", "00ABCD")]
+    [InlineData("80AB", "0080AB")]
+    public void ParseSerial_AlwaysYieldsAPositiveDerInteger(string input, string expected)
+    {
+        byte[]? serial = X509Factory.ParseSerial(input);
+
+        Assert.NotNull(serial);
+        Assert.Equal(expected, Convert.ToHexString(serial!));
+        Assert.False(serial!.All(b => b == 0), "序列号不能为 0。");
+        Assert.True((serial[0] & 0x80) == 0, "序列号最高位被置位时会解释为负数。");
+    }
+
+    [Fact]
+    public void CertificateWithAHighBitSerialCanBeCreated()
+    {
+        using var key = X509Factory.CreateKey(new X509KeyOptions { Algorithm = X509KeyAlgorithm.Ecdsa });
+        X509Certificate2 certificate = X509Factory.CreateSelfSigned(key, new X509CertificateOptions
+        {
+            Subject = "CN=serial.example.com",
+            ValidDays = 5,
+            SerialNumberHex = "FF0011",
+        });
+
+        Assert.True((Convert.FromHexString(certificate.SerialNumber)[0] & 0x80) == 0, "证书序列号不应为负数。");
+    }
+
+    /// <summary>
+    /// A CSR contains "BEGIN CERTIFICATE", so the naive substring test imported one file as both a CSR
+    /// and a certificate; this pins the classification that replaced it.
+    /// </summary>
+    [Fact]
+    public void ClassifyPem_DoesNotTreatACsrAsACertificate()
+    {
+        using var key = X509Factory.CreateKey(new X509KeyOptions { Algorithm = X509KeyAlgorithm.Ecdsa });
+        string csr = X509Factory.CreateRequest(key, new X509CertificateOptions { Subject = "CN=csr.example.com" })
+            .CreateSigningRequestPem();
+
+        X509Factory.PemContentKind kind = X509Factory.ClassifyPem(csr);
+
+        Assert.True(kind.HasFlag(X509Factory.PemContentKind.Csr));
+        Assert.False(kind.HasFlag(X509Factory.PemContentKind.Certificate));
+    }
+
+    [Fact]
+    public void ClassifyPem_RecognisesACertificateAndACombinedKey()
+    {
+        using var key = X509Factory.CreateKey(new X509KeyOptions { Algorithm = X509KeyAlgorithm.Ecdsa });
+        X509Certificate2 certificate = X509Factory.CreateSelfSigned(key, new X509CertificateOptions
+        {
+            Subject = "CN=pem.example.com",
+            ValidDays = 5,
+        });
+
+        string certificatePem = certificate.ExportCertificatePem();
+        X509Factory.PemContentKind onlyCertificate = X509Factory.ClassifyPem(certificatePem);
+        Assert.Equal(X509Factory.PemContentKind.Certificate, onlyCertificate);
+
+        string keyPem = key.ExportPkcs8PrivateKeyPem();
+        X509Factory.PemContentKind combined = X509Factory.ClassifyPem(keyPem + Environment.NewLine + certificatePem);
+        Assert.Equal(
+            X509Factory.PemContentKind.PrivateKey | X509Factory.PemContentKind.Certificate,
+            combined);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("not a certificate at all")]
+    public void ClassifyPem_IgnoresContentWithoutAnyPemHeader(string? text)
+    {
+        Assert.Equal(X509Factory.PemContentKind.None, X509Factory.ClassifyPem(text));
+    }
 }
 
 public class CertificateStoreTests

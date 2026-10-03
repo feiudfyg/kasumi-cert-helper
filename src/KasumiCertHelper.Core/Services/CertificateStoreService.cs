@@ -133,7 +133,7 @@ public sealed class CertificateStoreService
     {
         try
         {
-        using var store = new X509Store(storeName, location);
+            using var store = new X509Store(storeName, location);
             store.Open(OpenFlags.ReadOnly | OpenFlags.OpenExistingOnly);
             return store.Certificates.Count;
         }

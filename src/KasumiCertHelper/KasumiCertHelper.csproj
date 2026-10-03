@@ -88,7 +88,7 @@
           DestinationFolder="$(PublishDir)"
           SkipUnchangedFiles="true"
           Condition="Exists('$(OutDir)$(AssemblyName).pri')" />
-    <Error Text="没有找到 $(OutDir)$(AssemblyName).pri，生成的程序无法加载 XAML。"
+    <Error Text="Could not find $(OutDir)$(AssemblyName).pri, the published application would fail to load XAML."
            Condition="!Exists('$(PublishDir)$(AssemblyName).pri')" />
   </Target>
 

@@ -5,6 +5,9 @@ namespace KasumiCertHelper.Services;
 
 public static class AppServices
 {
+    /// <summary>A log larger than this is rolled to <c>kasumi.log.1</c> before the next entry.</summary>
+    private const long MaxLogBytes = 1_048_576;
+
     /// <summary>
     /// Settings, databases and the log live under %APPDATA%\KasumiCertHelper by default. Setting the
     /// <c>KASUMI_APPDATA</c> environment variable redirects all of it (used by the UI tests and for
@@ -90,10 +93,33 @@ public static class AppServices
         try
         {
             Directory.CreateDirectory(AppDataDirectory);
+            RollLogIfTooLarge();
             File.AppendAllText(LogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {message}{Environment.NewLine}");
         }
         catch (Exception)
         {
+        }
+    }
+
+    /// <summary>
+    /// The log only exists to diagnose a problem after the fact, so keeping one previous file is enough
+    /// and it never grows without bound.
+    /// </summary>
+    private static void RollLogIfTooLarge()
+    {
+        var info = new FileInfo(LogPath);
+        if (!info.Exists || info.Length < MaxLogBytes)
+        {
+            return;
+        }
+
+        try
+        {
+            File.Move(LogPath, LogPath + ".1", overwrite: true);
+        }
+        catch (Exception)
+        {
+            // Another process holds the file; the entry below simply appends to the current one.
         }
     }
 

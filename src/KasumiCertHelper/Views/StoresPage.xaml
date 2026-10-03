@@ -107,12 +107,12 @@
         <InfoBar x:Name="StatusBar" Grid.Row="1" IsOpen="False" Severity="Error" IsClosable="True" Margin="8,4" />
 
         <!-- ===================== content ===================== -->
-        <Grid x:Name="ContentGrid" Grid.Row="2">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="230" MinWidth="160" />
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="*" MinWidth="300" />
-            </Grid.ColumnDefinitions>
+                <Grid x:Name="ContentGrid" Grid.Row="2">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition x:Name="StorePaneColumn" Width="230" MinWidth="160" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" MinWidth="300" />
+                    </Grid.ColumnDefinitions>
 
             <!-- Store tree -->
             <Grid Grid.Column="0" Padding="12">
@@ -191,15 +191,15 @@
             </Border>
 
             <!-- Certificate list and details -->
-            <Grid x:Name="MainGrid" Grid.Column="2">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" MinHeight="120" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="260" MinHeight="120" />
-                </Grid.RowDefinitions>
+                <Grid x:Name="MainGrid" Grid.Column="2">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" MinHeight="120" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition x:Name="DetailsRow" Height="260" MinHeight="120" />
+                    </Grid.RowDefinitions>
 
                 <Grid Grid.Row="0" Padding="12,12,12,0" ColumnSpacing="8">
                     <Grid.ColumnDefinitions>

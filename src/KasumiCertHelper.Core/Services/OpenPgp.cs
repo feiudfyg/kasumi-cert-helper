@@ -132,6 +132,8 @@ public static class OpenPgp
 
         try
         {
+            // None of the BouncyCastle generators implement IDisposable; closing the stream they open
+            // is what finalises them (the wrapped stream calls Close on its generator).
             var encrypted = new PgpEncryptedDataGenerator(
                 SymmetricKeyAlgorithmTag.Aes256, withIntegrityPacket: true, random);
 
@@ -173,6 +175,36 @@ public static class OpenPgp
         }
 
         return output.ToArray();
+    }
+
+    /// <summary>
+    /// Key ids an encrypted message is addressed to, so a caller can load only the secret keys that
+    /// could possibly open it. Returns an empty list when the message cannot be read.
+    /// </summary>
+    public static IReadOnlyList<string> RecipientKeyIds(byte[] data)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+
+        try
+        {
+            var factory = new PgpObjectFactory(PgpUtilities.GetDecoderStream(new MemoryStream(data)));
+            if (factory.NextPgpObject() is not PgpEncryptedDataList list)
+            {
+                return Array.Empty<string>();
+            }
+
+            var ids = new List<string>();
+            foreach (PgpPublicKeyEncryptedData encrypted in list.GetEncryptedDataObjects())
+            {
+                ids.Add(unchecked((ulong)encrypted.KeyId).ToString("X16"));
+            }
+
+            return ids;
+        }
+        catch (Exception)
+        {
+            return Array.Empty<string>();
+        }
     }
 
     /// <summary>Decrypts with a secret key. <paramref name="secretKeyArmor"/> may contain several keys.</summary>
@@ -282,6 +314,23 @@ public static class OpenPgp
     public static string Fingerprint(PgpPublicKey key) => Convert.ToHexString(key.GetFingerprint());
 
     public static string KeyId(PgpPublicKey key) => unchecked((ulong)key.KeyId).ToString("X16");
+
+    /// <summary>
+    /// Every key id of the ring, primary key first. A signature can be made by any key of the ring -
+    /// an imported key usually signs with a subkey - so identifying the signer has to look at all of them.
+    /// </summary>
+    public static IReadOnlyList<string> KeyIdsOfPublicKey(string armor)
+    {
+        PgpPublicKeyRing ring = ReadPublicKeyRing(armor);
+        var ids = new List<string>();
+
+        foreach (PgpPublicKey key in ring.GetPublicKeys())
+        {
+            ids.Add(KeyId(key));
+        }
+
+        return ids;
+    }
 
     /// <summary>True when the payload is a bare signature packet, i.e. a detached signature.</summary>
     public static bool IsDetachedSignature(byte[] payload)

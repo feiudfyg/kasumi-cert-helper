@@ -49,10 +49,13 @@ internal static class UiHelpers
         return element.BoundingRectangle;
     }
 
-    /// <summary>Detail sections are collapsible; expand one by its title before asserting on it.</summary>
-    public static void ExpandSection(AppFixture app, string title)
+    /// <summary>
+    /// Detail sections are collapsible; expand one by its stable key (see <c>DetailSection.Key</c>)
+    /// before asserting on it, so the test does not depend on the interface language.
+    /// </summary>
+    public static void ExpandSection(AppFixture app, string key)
     {
-        AutomationElement section = app.RequireById("Section_" + title, 20);
+        AutomationElement section = app.RequireById("Section_" + key, 20);
         try
         {
             if (section.Patterns.ExpandCollapse.PatternOrDefault is { } pattern)
@@ -300,7 +303,7 @@ public class GpgPageTests
         Assert.False(string.IsNullOrWhiteSpace(UiHelpers.TextOf(_app, "Detail_Status")), "未显示状态。");
 
         // The armored public key lives in a collapsed section.
-        UiHelpers.ExpandSection(_app, "公钥");
+        UiHelpers.ExpandSection(_app, "PublicKey");
         Assert.False(string.IsNullOrWhiteSpace(UiHelpers.TextOf(_app, "Detail_PublicArmor")), "未显示公钥。");
     }
 
@@ -425,13 +428,57 @@ public class X509PageTests
         Assert.False(string.IsNullOrWhiteSpace(UiHelpers.TextOf(_app, "Detail_Validity")), "未显示有效期。");
         Assert.False(string.IsNullOrWhiteSpace(UiHelpers.TextOf(_app, "Detail_Thumbprint256")), "未显示 SHA-256 指纹。");
 
-        UiHelpers.ExpandSection(_app, "公钥与签名");
+        UiHelpers.ExpandSection(_app, "PublicKey");
         Assert.False(string.IsNullOrWhiteSpace(UiHelpers.TextOf(_app, "Detail_PublicKeyAlgorithm")), "未显示公钥算法。");
         Assert.False(string.IsNullOrWhiteSpace(UiHelpers.TextOf(_app, "Detail_KeySize")), "未显示密钥长度。");
 
-        UiHelpers.ExpandSection(_app, "扩展");
+        UiHelpers.ExpandSection(_app, "Extensions");
         Assert.False(string.IsNullOrWhiteSpace(UiHelpers.TextOf(_app, "Detail_IsCa")), "未显示 CA 标记。");
         Assert.False(string.IsNullOrWhiteSpace(UiHelpers.TextOf(_app, "Detail_KeyUsage")), "未显示密钥用法。");
+    }
+
+    /// <summary>
+    /// The toolbar acts on the selected row, which is an <c>X509Row</c> wrapper around the item. Once
+    /// the unwrapping was missing, so delete (and export) always answered "select an item first" no
+    /// matter what was selected - this is the regression guard for that.
+    /// </summary>
+    [Fact]
+    public void SelectingAnItemAndDeletingRemovesIt()
+    {
+        string dbName = "uitest-" + Guid.NewGuid().ToString("N")[..8];
+
+        _app.SelectPage("X.509 证书管理", "ItemList");
+
+        AppFixture.Activate(_app.RequireById("NewDbButton"));
+        _app.RequireById("DbName", 30).AsTextBox().Enter(dbName);
+        _app.RequireById("DbPassword", 30).AsTextBox().Enter("pw-123456");
+        _app.RequireById("DbPasswordConfirm", 30).AsTextBox().Enter("pw-123456");
+        _app.ClickButtonNamed("创建");
+        Assert.True(UiHelpers.WaitForText(_app, "DatabaseTitle", dbName, 30), "数据库未创建成功。");
+
+        AppFixture.Activate(_app.RequireById("NewKeyButton"));
+        _app.RequireById("KeyName", 30).AsTextBox().Enter("ui-delete-key");
+        _app.ClickButtonNamed("生成");
+        Assert.True(
+            _app.WaitUntil(() => UiHelpers.ListItems(_app, "ItemList").Length == 1, 30),
+            "生成密钥后项目列表中没有出现该项目。");
+
+        AutomationElement item = UiHelpers.ListItems(_app, "ItemList")[0];
+        AppFixture.Activate(item);
+        Assert.True(
+            UiHelpers.WaitForText(_app, "Detail_Name", "ui-delete-key", 30),
+            $"选中项目后没有显示它的详情，当前值：'{UiHelpers.TextOf(_app, "Detail_Name")}'");
+
+        AppFixture.Activate(_app.RequireById("DeleteButton"));
+
+        // The confirmation proves the selected row was resolved: the bug showed a message box instead.
+        Assert.NotNull(_app.RequireById("ConfirmDialogContent", 20));
+        AppFixture.Activate(_app.RequireById("PrimaryButton", 20));
+        Thread.Sleep(800);
+
+        Assert.True(
+            _app.WaitUntil(() => UiHelpers.ListItems(_app, "ItemList").Length == 0, 30),
+            "确认删除后项目仍在列表中。");
     }
 }
 

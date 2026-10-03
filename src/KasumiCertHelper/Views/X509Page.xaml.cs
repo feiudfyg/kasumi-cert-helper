@@ -33,6 +33,7 @@ public sealed partial class X509Page : Page
         ItemList.ItemsSource = _visibleItems;
         ApplyStoredLayout();
         Loaded += OnLoaded;
+        Unloaded += OnUnloaded;
     }
 
     public TableColumnLayout Columns { get; } = new(58, 200, 80, 70);
@@ -77,6 +78,19 @@ public sealed partial class X509Page : Page
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         AttachDatabase();
+    }
+
+    /// <summary>
+    /// The database lives for as long as the application does, so a page that stays subscribed after it
+    /// left the visual tree would be kept alive by the event and would still run its handler.
+    /// </summary>
+    private void OnUnloaded(object sender, RoutedEventArgs e)
+    {
+        if (_attached is not null)
+        {
+            _attached.Items.CollectionChanged -= OnDatabaseItemsChanged;
+            _attached = null;
+        }
     }
 
     private bool EnsureDatabase()
@@ -263,19 +277,19 @@ public sealed partial class X509Page : Page
         {
             return new List<DetailSection>
             {
-                new(Loc.Get("X509_Detail_ErrorTitle"), new[] { new DetailItem("Error", Loc.Get("X509_Detail_Content"), Loc.Get("X509_Detail_CertificateInvalid")) }, Expanded: true),
+                new("Error", Loc.Get("X509_Detail_ErrorTitle"), new[] { new DetailItem("Error", Loc.Get("X509_Detail_Content"), Loc.Get("X509_Detail_CertificateInvalid")) }, Expanded: true),
             };
         }
 
         var sections = DetailPresenter.ForCertificate(CertificateSummaryBuilder.Build(certificate)).ToList();
-        sections.Add(new DetailSection(Loc.Get("X509_Detail_PemSection"), new[]
+        sections.Add(new DetailSection("Pem", Loc.Get("X509_Detail_PemSection"), new[]
         {
             new DetailItem("CertificatePem", Loc.Get("X509_Detail_CertificatePem"), item.CertificatePem ?? string.Empty, Monospace: true),
         }));
 
         if (item.NotAfter is not null)
         {
-            sections.Add(new DetailSection(Loc.Get("X509_Detail_DatabaseRecord"), new[]
+            sections.Add(new DetailSection("DatabaseRecord", Loc.Get("X509_Detail_DatabaseRecord"), new[]
             {
                 new DetailItem("Created", Loc.Get("X509_Detail_Created"), item.CreatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")),
                 new DetailItem("Comment", Loc.Get("X509Dlg_Comment"), item.Comment),
@@ -317,9 +331,9 @@ public sealed partial class X509Page : Page
 
         return new List<DetailSection>
         {
-            new(Loc.Get("X509_Detail_CsrSection"), basic, Expanded: true),
-            new(Loc.Get("X509_Detail_CsrExtensions"), extensions),
-            new(Loc.Get("X509_Detail_PemSection"), new[] { new DetailItem("CsrPem", Loc.Get("X509_Detail_CsrPem"), item.CsrPem ?? string.Empty, Monospace: true) }),
+            new("Csr", Loc.Get("X509_Detail_CsrSection"), basic, Expanded: true),
+            new("CsrExtensions", Loc.Get("X509_Detail_CsrExtensions"), extensions),
+            new("Pem", Loc.Get("X509_Detail_PemSection"), new[] { new DetailItem("CsrPem", Loc.Get("X509_Detail_CsrPem"), item.CsrPem ?? string.Empty, Monospace: true) }),
         };
     }
 
@@ -331,7 +345,9 @@ public sealed partial class X509Page : Page
             List<X509Item> used = database.Items.Where(i => i.KeyId == item.Id).ToList();
             if (used.Count > 0)
             {
-                usedBy = string.Join("；", used.Select(i => $"{i.Name}（{i.KindText}）"));
+                usedBy = string.Join(
+                    Loc.Get("Common_ListSeparator"),
+                    used.Select(i => $"{i.Name} ({i.KindText})"));
             }
         }
 
@@ -348,8 +364,8 @@ public sealed partial class X509Page : Page
 
         return new List<DetailSection>
         {
-            new(Loc.Get("X509_Kind_PrivateKey"), basic, Expanded: true),
-            new(Loc.Get("X509_Detail_PublicKeySection"), new[]
+            new("Key", Loc.Get("X509_Kind_PrivateKey"), basic, Expanded: true),
+            new("PublicKeyPem", Loc.Get("X509_Detail_PublicKeySection"), new[]
             {
                 new DetailItem("KeyPem", Loc.Get("X509_Detail_PublicKeyPem"), BuildKeyPem(item, database), Monospace: true),
             }),
@@ -407,10 +423,16 @@ public sealed partial class X509Page : Page
                 return;
             }
 
-            X509Database database = X509Database.Open(input.Value.Path, input.Value.Password);
-            if (!database.ValidatePassword(input.Value.Password))
+            // Open validates the password itself, so a wrong one is reported the same way here and in
+            // any other caller.
+            X509Database database;
+            try
             {
-                await DialogService.ShowMessageAsync(Loc.Get("Common_WrongPassword"), Loc.Get("X509_ErrorWrongPassword"));
+                database = X509Database.Open(input.Value.Path, input.Value.Password);
+            }
+            catch (WrongPasswordException ex)
+            {
+                await DialogService.ShowMessageAsync(Loc.Get("Common_WrongPassword"), ex.Message);
                 return;
             }
 
@@ -591,7 +613,7 @@ public sealed partial class X509Page : Page
 
         caBox.SelectionChanged += (_, _) => UpdateCaHint();
         UpdateCaHint();
-        var hashBox = new ComboBox { Header = Loc.Get("X509Dlg_HashAlgorithm"), ItemsSource = X509Factory.HashAlgorithms, SelectedIndex = 0, MinWidth = 380 };
+        var hashBox = new ComboBox { Header = Loc.Get("X509Dlg_HashAlgorithm"), ItemsSource = X509Factory.HashAlgorithmChoices(), DisplayMemberPath = "Display", SelectedIndex = 0, MinWidth = 380 };
         var caCheck = new CheckBox { Content = Loc.Get("X509_SignMarkAsCa") };
         var pathLenCheck = new CheckBox { Content = Loc.Get("X509Dlg_LimitPathLength"), IsEnabled = false };
         var pathLenBox = new NumberBox { Minimum = 0, Maximum = 32, Value = 0, SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline, IsEnabled = false };
@@ -657,7 +679,7 @@ public sealed partial class X509Page : Page
             var options = new X509CertificateOptions
             {
                 ValidDays = double.IsNaN(daysBox.Value) ? 365 : (int)daysBox.Value,
-                HashAlgorithm = hashBox.SelectedItem as string ?? "SHA256",
+                HashAlgorithm = (hashBox.SelectedItem as X509Factory.HashAlgorithmChoice)?.Value ?? "SHA256",
                 IsCa = isCa,
                 HasPathLengthConstraint = pathLenCheck.IsChecked == true,
                 PathLengthConstraint = double.IsNaN(pathLenBox.Value) ? 0 : (int)pathLenBox.Value,
@@ -734,30 +756,32 @@ public sealed partial class X509Page : Page
         byte[] data = await File.ReadAllBytesAsync(path);
         string name = Path.GetFileNameWithoutExtension(path);
         string? text = TryGetText(data);
+        X509Factory.PemContentKind kind = X509Factory.ClassifyPem(text);
 
-        if (text is not null && text.Contains("-----BEGIN", StringComparison.Ordinal))
+        if (kind != X509Factory.PemContentKind.None)
         {
             int count = 0;
 
-            if (text.Contains("PRIVATE KEY", StringComparison.Ordinal))
+            if (kind.HasFlag(X509Factory.PemContentKind.PrivateKey))
             {
-                string? password = text.Contains("ENCRYPTED PRIVATE KEY", StringComparison.Ordinal)
+                string? keyPem = text!;
+                string? password = keyPem.Contains("ENCRYPTED PRIVATE KEY", StringComparison.Ordinal)
                     ? await DialogService.ShowPasswordAsync(Loc.Get("X509_PrivateKeyPassword"), Loc.Get("X509_EnterPrivateKeyPassword"))
                     : null;
-                database.ImportKey(name, text, password, Loc.Format("X509_CommentImportedFrom", Path.GetFileName(path)));
+                database.ImportKey(name, keyPem, password, Loc.Format("X509_CommentImportedFrom", Path.GetFileName(path)));
                 count++;
             }
 
-            if (text.Contains("CERTIFICATE REQUEST", StringComparison.Ordinal))
+            if (kind.HasFlag(X509Factory.PemContentKind.Csr))
             {
-                database.ImportCsr(name, text, Loc.Format("X509_CommentImportedFrom", Path.GetFileName(path)));
+                database.ImportCsr(name, text!, Loc.Format("X509_CommentImportedFrom", Path.GetFileName(path)));
                 count++;
             }
 
-            if (text.Contains("BEGIN CERTIFICATE", StringComparison.Ordinal))
+            if (kind.HasFlag(X509Factory.PemContentKind.Certificate))
             {
-                string? keyPem = text.Contains("PRIVATE KEY", StringComparison.Ordinal) ? text : null;
-                database.ImportCertificate(name, text, keyPem, Loc.Format("X509_CommentImportedFrom", Path.GetFileName(path)));
+                string? keyPem = kind.HasFlag(X509Factory.PemContentKind.PrivateKey) ? text : null;
+                database.ImportCertificate(name, text!, keyPem, Loc.Format("X509_CommentImportedFrom", Path.GetFileName(path)));
                 count++;
             }
 
@@ -787,14 +811,12 @@ public sealed partial class X509Page : Page
 
                 if (certs.Count > 0 && certs[0].HasPrivateKey)
                 {
-                    CertificateFileIO.Export(certs[0], path + ".tmp", CertificateFileFormat.Pkcs12, password, true);
                     database.ImportCertificate(name, certs[0].ExportCertificatePem(), null, Loc.Format("X509_CommentImportedFrom", Path.GetFileName(path)));
                     using AsymmetricAlgorithm? privateKey = CertificateKeyIO.GetPrivateKey(certs[0]);
                     if (privateKey is not null)
                     {
                         database.AddKey(name + Loc.Get("X509_KeyNameSuffix"), privateKey, Loc.Format("X509_CommentImportedFrom", Path.GetFileName(path)));
                     }
-                    try { File.Delete(path + ".tmp"); } catch (Exception) { }
                 }
                 else
                 {
@@ -819,7 +841,7 @@ public sealed partial class X509Page : Page
 
     private async void OnExportClick(object sender, RoutedEventArgs e)
     {
-        if (ItemList.SelectedItem is not X509Item item)
+        if ((ItemList.SelectedItem as X509Row)?.Item is not X509Item item)
         {
             await DialogService.ShowMessageAsync(Loc.Get("Common_Export"), Loc.Get("X509_SelectItemFirst"));
             return;
@@ -902,7 +924,7 @@ public sealed partial class X509Page : Page
 
     private async void OnDeleteClick(object sender, RoutedEventArgs e)
     {
-        if (ItemList.SelectedItem is not X509Item item)
+        if ((ItemList.SelectedItem as X509Row)?.Item is not X509Item item)
         {
             await DialogService.ShowMessageAsync(Loc.Get("Common_Delete"), Loc.Get("X509_SelectItemFirst"));
             return;

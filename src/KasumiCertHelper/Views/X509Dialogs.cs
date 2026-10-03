@@ -169,7 +169,8 @@ internal static class X509Dialogs
         var hashBox = new ComboBox
         {
             Header = Loc.Get("X509Dlg_HashAlgorithm"),
-            ItemsSource = X509Factory.HashAlgorithms,
+            ItemsSource = X509Factory.HashAlgorithmChoices(),
+            DisplayMemberPath = "Display",
             SelectedIndex = 0,
         };
 
@@ -372,7 +373,7 @@ internal static class X509Dialogs
         {
             Name = string.IsNullOrWhiteSpace(nameBox.Text) ? defaultName : nameBox.Text.Trim(),
             ValidDays = double.IsNaN(daysBox.Value) ? 365 : (int)daysBox.Value,
-            Hash = hashBox.SelectedItem as string ?? "SHA256",
+            Hash = (hashBox.SelectedItem as X509Factory.HashAlgorithmChoice)?.Value ?? "SHA256",
             IsCa = caCheck.IsChecked == true,
             HasPathLengthConstraint = pathLenCheck.IsChecked == true,
             PathLengthConstraint = double.IsNaN(pathLenBox.Value) ? 0 : (int)pathLenBox.Value,

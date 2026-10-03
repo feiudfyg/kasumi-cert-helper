@@ -106,5 +106,5 @@ public static class FilePickerHelper
         => App.MainWindow is null ? 0 : WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
 
     private static string Normalize(string extension)
-        => extension.StartsWith('.') ? "*" + extension : extension.Contains('.') ? "*." + extension : "*." + extension;
+        => extension.StartsWith('.') ? "*" + extension : "*." + extension;
 }

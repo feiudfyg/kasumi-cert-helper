@@ -251,7 +251,8 @@ public sealed class OpenPgpKeyStore
             key.CanEncrypt,
             key.CanSign,
             ReadNote(fingerprint),
-            armor);
+            armor,
+            OpenPgp.KeyIdsOfPublicKey(armor));
     }
 
     private string? ReadNote(string fingerprint)

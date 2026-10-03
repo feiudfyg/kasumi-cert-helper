@@ -1,6 +1,7 @@
 using KasumiCertHelper.Core.Localization;
 using KasumiCertHelper.Core.Services;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 
 namespace KasumiCertHelper.Services;
@@ -23,10 +24,15 @@ public static class DialogService
             return;
         }
 
+        // The automation id lets the UI tests tell the kinds of dialog apart, because the visible
+        // buttons can share their text with toolbar buttons behind the dialog.
+        ScrollViewer content = CreateScrollableText(message);
+        AutomationProperties.SetAutomationId(content, "MessageDialogContent");
+
         var dialog = new ContentDialog
         {
             Title = title,
-            Content = CreateScrollableText(message),
+            Content = content,
             CloseButtonText = closeText ?? Loc.Get("Common_Ok"),
             DefaultButton = ContentDialogButton.Close,
         };
@@ -40,10 +46,13 @@ public static class DialogService
             return false;
         }
 
+        ScrollViewer content = CreateScrollableText(message);
+        AutomationProperties.SetAutomationId(content, "ConfirmDialogContent");
+
         var dialog = new ContentDialog
         {
             Title = title,
-            Content = CreateScrollableText(message),
+            Content = content,
             PrimaryButtonText = primaryText ?? Loc.Get("Common_Ok"),
             CloseButtonText = closeText ?? Loc.Get("Common_Cancel"),
             DefaultButton = ContentDialogButton.Close,
@@ -159,7 +168,6 @@ public static class DialogService
         if (exception is UnauthorizedAccessException ||
             text.Contains("Access is denied", StringComparison.OrdinalIgnoreCase) ||
             text.Contains("拒绝访问", StringComparison.OrdinalIgnoreCase) ||
-                text.Contains("Access is denied", StringComparison.OrdinalIgnoreCase) ||
             text.Contains("access denied", StringComparison.OrdinalIgnoreCase))
         {
             text += Environment.NewLine + Environment.NewLine +
