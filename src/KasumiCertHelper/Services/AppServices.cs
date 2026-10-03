@@ -31,7 +31,20 @@ public static class AppServices
 
     public static event EventHandler? DatabaseChanged;
 
+    /// <summary>Raised after the OpenPGP key store directory changes.</summary>
+    public static event EventHandler? PgpChanged;
+
     public static string PgpDirectory => Pgp.Directory;
+
+    public static string DefaultPgpDirectory => Path.Combine(AppDataDirectory, "pgp", "keys");
+
+    public static string DefaultDatabaseDirectory => Path.Combine(AppDataDirectory, "databases");
+
+    /// <summary>Where the user wants OpenPGP keys kept, or the default directory.</summary>
+    public static string PgpKeyDirectory => ResolveDirectory(Settings.PgpKeyDirectory, DefaultPgpDirectory);
+
+    /// <summary>Where the user wants X.509 databases kept, or the default directory.</summary>
+    public static string DatabaseDirectory => ResolveDirectory(Settings.DatabaseDirectory, DefaultDatabaseDirectory);
 
     public static void Initialize()
     {
@@ -56,11 +69,48 @@ public static class AppServices
             Loc.SetCulture(Settings.Language);
         }
 
-        Pgp = new OpenPgpKeyStore(DefaultPgpDirectory);
+        Pgp = new OpenPgpKeyStore(PgpKeyDirectory);
         Log($"OpenPGP: directory={Pgp.Directory} keys={Pgp.List().Count} lang={Loc.Culture}");
     }
 
-    private static string DefaultPgpDirectory => Path.Combine(AppDataDirectory, "pgp", "keys");
+    /// <summary>
+    /// Moves the OpenPGP key store to another directory (pass <c>null</c> for the default). Keys already
+    /// in the new directory are picked up; keys in the old one are left where they are.
+    /// </summary>
+    public static void SetPgpKeyDirectory(string? directory)
+    {
+        Settings.PgpKeyDirectory = string.IsNullOrWhiteSpace(directory) ? null : Path.GetFullPath(directory);
+        Settings.Save();
+
+        Pgp = new OpenPgpKeyStore(PgpKeyDirectory);
+        Log($"OpenPGP: directory={Pgp.Directory} keys={Pgp.List().Count}");
+        PgpChanged?.Invoke(null, EventArgs.Empty);
+    }
+
+    /// <summary>Sets the directory new X.509 databases are created in (pass <c>null</c> for the default).</summary>
+    public static void SetDatabaseDirectory(string? directory)
+    {
+        Settings.DatabaseDirectory = string.IsNullOrWhiteSpace(directory) ? null : Path.GetFullPath(directory);
+        Settings.Save();
+        DatabaseChanged?.Invoke(null, EventArgs.Empty);
+    }
+
+    private static string ResolveDirectory(string? configured, string fallback)
+    {
+        if (string.IsNullOrWhiteSpace(configured))
+        {
+            return fallback;
+        }
+
+        try
+        {
+            return Path.GetFullPath(configured);
+        }
+        catch (Exception)
+        {
+            return fallback;
+        }
+    }
 
     public static void SetDatabase(X509Database? database)
     {

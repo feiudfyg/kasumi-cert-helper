@@ -103,6 +103,92 @@ public sealed partial class SettingsPage : Page
 
         PgpKeyCountText.Text = Loc.Format("Settings_PgpKeyCount", AppServices.Pgp.List().Count);
         PgpDirectoryText.Text = Loc.Get("Settings_PgpDirectoryPrefix") + AppServices.PgpDirectory;
+        GnupgKeyringText.Text = DescribeGnupg();
+        DatabaseDirectoryText.Text = AppServices.DatabaseDirectory;
+        PgpDirectorySettingText.Text = AppServices.PgpKeyDirectory;
+    }
+
+    /// <summary>One or two lines describing the GnuPG keyring that can be imported.</summary>
+    private static string DescribeGnupg()
+    {
+        GnupgKeyringInfo info = GnupgKeyring.Inspect();
+        if (!info.Exists || info.Home is null)
+        {
+            return Loc.Get("Gpg_GnupgHomeMissing");
+        }
+
+        string home = Loc.Format("Gpg_GnupgKeyringLine", info.Home);
+        return info.Executable is null
+            ? home + Environment.NewLine + Loc.Get("Gpg_GnupgExecutableMissing")
+            : home + Environment.NewLine + Loc.Format(
+                "Gpg_GnupgExecutableLine",
+                info.Executable + (info.Version is null ? string.Empty : $" ({info.Version})"));
+    }
+
+    private async void OnImportGnupgClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            await GnupgImportFlow.RunAsync(AppServices.Pgp);
+            UpdateStatus();
+        }
+        catch (Exception ex)
+        {
+            await DialogService.ShowErrorAsync(Loc.Get("Gpg_Import_Failed"), ex);
+        }
+    }
+
+    private async void OnChangeDatabaseDirectoryClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            string? folder = await FilePickerHelper.PickFolderAsync();
+            if (folder is null)
+            {
+                return;
+            }
+
+            AppServices.SetDatabaseDirectory(folder);
+            UpdateStatus();
+            await DialogService.ShowMessageAsync(
+                Loc.Get("Settings_StorageSection"),
+                Loc.Format("Settings_DatabaseDirectoryChanged", AppServices.DatabaseDirectory));
+        }
+        catch (Exception ex)
+        {
+            await DialogService.ShowErrorAsync(Loc.Get("Settings_StorageSection"), ex);
+        }
+    }
+
+    private void OnResetDatabaseDirectoryClick(object sender, RoutedEventArgs e)
+    {
+        AppServices.SetDatabaseDirectory(null);
+        UpdateStatus();
+    }
+
+    private async void OnChangePgpDirectoryClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            string? folder = await FilePickerHelper.PickFolderAsync();
+            if (folder is null)
+            {
+                return;
+            }
+
+            AppServices.SetPgpKeyDirectory(folder);
+            UpdateStatus();
+        }
+        catch (Exception ex)
+        {
+            await DialogService.ShowErrorAsync(Loc.Get("Settings_StorageSection"), ex);
+        }
+    }
+
+    private void OnResetPgpDirectoryClick(object sender, RoutedEventArgs e)
+    {
+        AppServices.SetPgpKeyDirectory(null);
+        UpdateStatus();
     }
 
     private async void OnOpenSourceClick(object sender, RoutedEventArgs e)

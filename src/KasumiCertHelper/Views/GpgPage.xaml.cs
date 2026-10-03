@@ -331,6 +331,28 @@ public sealed partial class GpgPage : Page
         }
     }
 
+    private async void OnImportGnupgClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            BusyRing.IsActive = true;
+            IReadOnlyList<string> fingerprints = await GnupgImportFlow.RunAsync(Store);
+            if (fingerprints.Count > 0)
+            {
+                await LoadKeysAsync();
+                SelectKey(fingerprints[0]);
+            }
+        }
+        catch (Exception ex)
+        {
+            await DialogService.ShowErrorAsync(Loc.Get("Gpg_Import_Failed"), ex);
+        }
+        finally
+        {
+            BusyRing.IsActive = false;
+        }
+    }
+
     private async void OnGenerateClick(object sender, RoutedEventArgs e)
     {
         var nameBox = new TextBox { Header = Loc.Get("Gpg_Gen_Name"), PlaceholderText = Loc.Get("Gpg_Gen_NameHint") };

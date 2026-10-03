@@ -198,7 +198,7 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" MinHeight="120" />
                         <RowDefinition Height="Auto" />
-                        <RowDefinition x:Name="DetailsRow" Height="260" MinHeight="120" />
+                        <RowDefinition x:Name="DetailsRow" Height="300" MinHeight="140" />
                     </Grid.RowDefinitions>
 
                 <Grid Grid.Row="0" Padding="12,12,12,0" ColumnSpacing="8">
@@ -298,11 +298,17 @@
                     </StackPanel>
                 </Grid>
 
-                <Border x:Name="DetailsSplitter" Grid.Row="4" Style="{StaticResource RowSplitterStyle}"
-                        ManipulationDelta="OnDetailsSplitterDrag">
+                <Grid Grid.Row="4" Height="11">
                     <Border Height="1" VerticalAlignment="Center"
                             Background="{ThemeResource CardStrokeColorDefaultBrush}" />
-                </Border>
+                    <Border Height="3" Width="44" CornerRadius="2" VerticalAlignment="Center"
+                            HorizontalAlignment="Center"
+                            Background="{ThemeResource ControlStrongStrokeColorDefaultBrush}" />
+                    <Thumb x:Name="DetailsSplitter" Background="Transparent" IsTabStop="True"
+                           AutomationProperties.AutomationId="DetailsSplitter"
+                           ToolTipService.ToolTip="{x:Bind T('Stores_DragToResizeDetails')}"
+                           DragDelta="OnDetailsSplitterDrag" KeyDown="OnDetailsSplitterKeyDown" />
+                </Grid>
 
                 <Grid x:Name="DetailsPane" Grid.Row="5" BorderThickness="0,1,0,0"
                       BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">

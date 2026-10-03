@@ -2,7 +2,9 @@ using System.Drawing;
 using System.Text.RegularExpressions;
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Definitions;
+using FlaUI.Core.Input;
 using FlaUI.Core.Tools;
+using FlaUI.Core.WindowsAPI;
 
 namespace KasumiCertHelper.UiTests;
 
@@ -265,6 +267,48 @@ public class StoresPageTests
             _app.WaitUntil(() => _app.FindById("DetailsPane", 3) is not null, 20),
             "点击「显示详情」后详细信息面板没有回来。");
     }
+
+    /// <summary>
+    /// The details pane used to be a sliver that could not be grown: its saved height could be
+    /// squeezed down to the minimum and dragging was capped. This checks the default size and that
+    /// dragging the splitter really changes it.
+    /// </summary>
+    [Fact]
+    public void DetailsPaneHasAUsableDefaultAndCanBeResized()
+    {
+        _app.SelectPage("证书存储", "UserStoreList");
+        AutomationElement[] stores = UiHelpers.WaitForListItems(_app, "UserStoreList", TimeSpan.FromSeconds(40));
+        Assert.NotEmpty(stores);
+
+        AppFixture.Activate(stores.First(i => (i.Name ?? string.Empty).Contains("受信任的根证书颁发机构")));
+        AutomationElement[] certificates = UiHelpers.WaitForListItems(_app, "CertList", TimeSpan.FromSeconds(40));
+        Assert.NotEmpty(certificates);
+        AppFixture.Activate(certificates[0]);
+
+        AutomationElement details = _app.RequireById("DetailsPane", 20);
+        double before = details.BoundingRectangle.Height;
+        Assert.True(before >= 120, $"default details height too small: before={before:0.##} rect={details.BoundingRectangle}");
+
+        AutomationElement splitter = _app.RequireById("DetailsSplitter", 20);
+        Assert.True(splitter.BoundingRectangle.Height >= 5, "分割线没有可点击的高度。");
+        Assert.True(_app.Window.BoundingRectangle.Contains(splitter.BoundingRectangle), "分割线不在窗口内。");
+
+        // Resizing is driven by keyboard here: synthetic mouse input does not reach this WinUI window,
+        // so the drag path (the same ResizeDetails code) cannot be exercised from a test.
+        splitter.Focus();
+        Thread.Sleep(300);
+        for (int i = 0; i < 4; i++)
+        {
+            Keyboard.Press(VirtualKeyShort.UP);
+            Thread.Sleep(150);
+        }
+        Thread.Sleep(400);
+
+        double after = _app.RequireById("DetailsPane", 10).BoundingRectangle.Height;
+        Assert.True(
+            after > before + 40,
+            $"details pane did not grow: before={before:0.##} after={after:0.##}");
+    }
 }
 
 [Collection("kasumi-app")]
@@ -316,7 +360,8 @@ public class GpgPageTests
         UiHelpers.AssertReachable(_app,
             "RefreshButton", "GenerateButton", "ImportButton", "DeleteButton",
             "ExportPublicButton", "ExportSecretButton", "CopyFingerprintButton",
-            "EncryptButton", "DecryptButton", "SignButton", "VerifyButton");
+            "EncryptButton", "DecryptButton", "SignButton", "VerifyButton",
+            "ImportGnupgButton", "OpenKeyFolderButton");
     }
 
     [Fact]
@@ -500,6 +545,18 @@ public class SettingsPageTests
         Assert.NotNull(_app.RequireById("PgpKeyCountText"));
         Assert.NotNull(_app.RequireById("PgpDirectoryText"));
         Assert.NotNull(_app.RequireById("OpenPgpFolderButton"));
+        Assert.NotNull(_app.RequireById("ImportGnupgSettingsButton"));
+        Assert.False(string.IsNullOrWhiteSpace(UiHelpers.TextOf(_app, "GnupgKeyringText")),
+            "the GnuPG keyring status is not shown");
+
+        // The default locations are configurable and the current ones are shown.
+        Assert.NotNull(_app.RequireById("ChangeDatabaseDirectoryButton"));
+        Assert.NotNull(_app.RequireById("ResetDatabaseDirectoryButton"));
+        Assert.NotNull(_app.RequireById("ChangePgpDirectoryButton"));
+        Assert.NotNull(_app.RequireById("ResetPgpDirectoryButton"));
+        Assert.Contains("kasumi", UiHelpers.TextOf(_app, "DatabaseDirectoryText"), StringComparison.OrdinalIgnoreCase);
+        Assert.False(string.IsNullOrWhiteSpace(UiHelpers.TextOf(_app, "PgpDirectorySettingText")),
+            "the OpenPGP key folder is not shown");
     }
 
     /// <summary>

@@ -13,6 +13,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Windows.ApplicationModel.DataTransfer;
+using Windows.System;
 
 namespace KasumiCertHelper.Views;
 
@@ -25,6 +26,12 @@ public sealed partial class StoresPage : Page
     private const string StorePaneKey = "Stores.StorePaneWidth";
     private const string DetailsPaneKey = "Stores.DetailsPaneHeight";
     private const string DetailsVisibleKey = "Stores.DetailsVisible";
+
+    /// <summary>The details pane never gets smaller than this, whether dragged or squeezed.</summary>
+    private const double MinimumDetailsHeight = 140;
+
+    /// <summary>Room the certificate list keeps when the window is too short for both panes.</summary>
+    private const double MinimumListHeight = 120;
 
     private readonly CertificateStoreService _stores = AppServices.StoreService;
     private readonly ObservableCollection<CertRow> _visibleCertificates = new();
@@ -40,6 +47,9 @@ public sealed partial class StoresPage : Page
     private bool _suppressSelection;
     private bool _initialized;
     private bool _detailsVisible = true;
+
+    /// <summary>Height the user chose for the details pane, or 0 while none has been chosen.</summary>
+    private double _detailsHeight;
 
     public StoresPage()
     {
@@ -62,20 +72,48 @@ public sealed partial class StoresPage : Page
 
         StorePaneColumn.Width = new GridLength(
             Settings.GetLayoutDouble(StorePaneKey, 230), GridUnitType.Pixel);
-        DetailsRow.Height = new GridLength(
-            Settings.GetLayoutDouble(DetailsPaneKey, 260), GridUnitType.Pixel);
+        MainGrid.SizeChanged += OnMainGridSizeChanged;
+
+        // A height the user picked is restored as it was; a pane that was never sized by hand gets a
+        // share of the window instead of a fixed number that could end up being a sliver.
+        double stored = Settings.GetLayoutDouble(DetailsPaneKey, 0);
+        _detailsHeight = stored >= MinimumDetailsHeight ? stored : 0;
+        DetailsRow.Height = new GridLength(DetailsHeight(MainGrid.ActualHeight));
 
         _detailsVisible = Settings.GetLayoutBool(DetailsVisibleKey, true);
         ApplyDetailsVisibility();
+    }
+
+    /// <summary>
+    /// The height of the details row: what the user picked, or - until they pick one - a share of the
+    /// list area so the pane is never a sliver.
+    /// </summary>
+    private double DetailsHeight(double available)
+    {
+        if (_detailsHeight > 0)
+        {
+            return _detailsHeight;
+        }
+
+        return available <= 0 ? 300 : Math.Clamp(available * 0.45, 200, 480);
+    }
+
+    private void OnMainGridSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        // Shrinking the window must not push the details pane out of view, and a pane that only has a
+        // computed height follows the window while it is being resized.
+        double maximum = Math.Max(MinimumDetailsHeight, e.NewSize.Height - MinimumListHeight);
+        double height = Math.Min(DetailsHeight(e.NewSize.Height), maximum);
+        DetailsRow.Height = new GridLength(_detailsVisible ? height : 0);
     }
 
     private void PersistLayout()
     {
         Settings.SetLayout(ColumnsKey, Columns.Serialize());
         Settings.SetLayoutDouble(StorePaneKey, StorePaneColumn.ActualWidth);
-        if (_detailsVisible)
+        if (_detailsVisible && _detailsHeight > 0)
         {
-            Settings.SetLayoutDouble(DetailsPaneKey, DetailsRow.ActualHeight);
+            Settings.SetLayoutDouble(DetailsPaneKey, _detailsHeight);
         }
         Settings.SetLayoutBool(DetailsVisibleKey, _detailsVisible);
     }
@@ -103,12 +141,33 @@ public sealed partial class StoresPage : Page
         PersistLayout();
     }
 
-    private void OnDetailsSplitterDrag(object sender, ManipulationDeltaRoutedEventArgs e)
+    private void OnDetailsSplitterDrag(object sender, DragDeltaEventArgs e) => ResizeDetails(-e.VerticalChange);
+
+    /// <summary>Arrow keys resize the pane as well, for keyboards. Up makes the details pane taller.</summary>
+    private void OnDetailsSplitterKeyDown(object sender, KeyRoutedEventArgs e)
     {
-        double maximum = Math.Max(200, MainGrid.ActualHeight - 180);
-        DetailsRow.Height = new GridLength(
-            Math.Clamp(DetailsRow.ActualHeight - e.Delta.Translation.Y, 120, maximum),
-            GridUnitType.Pixel);
+        double delta = e.Key switch
+        {
+            VirtualKey.Up => 24,
+            VirtualKey.Down => -24,
+            _ => 0,
+        };
+
+        if (delta == 0)
+        {
+            return;
+        }
+
+        ResizeDetails(delta);
+        e.Handled = true;
+    }
+
+    /// <summary>Grows the details pane by <paramref name="delta"/> pixels, within the allowed range.</summary>
+    private void ResizeDetails(double delta)
+    {
+        double maximum = Math.Max(MinimumDetailsHeight + 80, MainGrid.ActualHeight - MinimumListHeight);
+        _detailsHeight = Math.Clamp(DetailsHeight(MainGrid.ActualHeight) + delta, MinimumDetailsHeight, maximum);
+        DetailsRow.Height = new GridLength(_detailsHeight);
         PersistLayout();
     }
 
@@ -138,7 +197,7 @@ public sealed partial class StoresPage : Page
     private void ApplyDetailsVisibility()
     {
         DetailsRow.Height = _detailsVisible
-            ? new GridLength(Settings.GetLayoutDouble(DetailsPaneKey, 260), GridUnitType.Pixel)
+            ? new GridLength(DetailsHeight(MainGrid.ActualHeight))
             : new GridLength(0);
 
         DetailsPane.Visibility = _detailsVisible ? Visibility.Visible : Visibility.Collapsed;

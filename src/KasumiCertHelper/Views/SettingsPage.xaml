@@ -27,7 +27,34 @@
                 <TextBlock x:Name="PgpKeyCountText" TextWrapping="Wrap" />
                 <TextBlock x:Name="PgpDirectoryText" TextWrapping="Wrap" FontFamily="Consolas" FontSize="12"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                <Button x:Name="OpenPgpFolderButton" Content="{x:Bind T('Gpg_OpenKeyFolder')}" Click="OnOpenPgpFolderClick" />
+                <TextBlock x:Name="GnupgKeyringText" TextWrapping="Wrap" FontSize="12"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button x:Name="ImportGnupgSettingsButton" Content="{x:Bind T('Gpg_ImportGnupg')}" Click="OnImportGnupgClick" />
+                    <Button x:Name="OpenPgpFolderButton" Content="{x:Bind T('Gpg_OpenKeyFolder')}" Click="OnOpenPgpFolderClick" />
+                </StackPanel>
+            </StackPanel>
+
+            <StackPanel Spacing="8">
+                <TextBlock Text="{x:Bind T('Settings_StorageSection')}" FontSize="18" FontWeight="SemiBold" />
+                <TextBlock Text="{x:Bind T('Settings_StorageHint')}" TextWrapping="Wrap" FontSize="12"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+
+                <TextBlock Text="{x:Bind T('Settings_DatabaseDirectoryLabel')}" />
+                <TextBlock x:Name="DatabaseDirectoryText" TextWrapping="Wrap" FontFamily="Consolas" FontSize="12"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button x:Name="ChangeDatabaseDirectoryButton" Content="{x:Bind T('Settings_ChangeFolder')}" Click="OnChangeDatabaseDirectoryClick" />
+                    <Button x:Name="ResetDatabaseDirectoryButton" Content="{x:Bind T('Settings_UseDefaultFolder')}" Click="OnResetDatabaseDirectoryClick" />
+                </StackPanel>
+
+                <TextBlock Text="{x:Bind T('Settings_PgpDirectoryLabel')}" />
+                <TextBlock x:Name="PgpDirectorySettingText" TextWrapping="Wrap" FontFamily="Consolas" FontSize="12"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button x:Name="ChangePgpDirectoryButton" Content="{x:Bind T('Settings_ChangeFolder')}" Click="OnChangePgpDirectoryClick" />
+                    <Button x:Name="ResetPgpDirectoryButton" Content="{x:Bind T('Settings_UseDefaultFolder')}" Click="OnResetPgpDirectoryClick" />
+                </StackPanel>
             </StackPanel>
 
             <StackPanel Spacing="8">

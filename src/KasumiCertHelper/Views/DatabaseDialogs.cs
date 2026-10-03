@@ -9,7 +9,7 @@ namespace KasumiCertHelper.Views;
 
 internal static class DatabasePaths
 {
-    public static string DefaultDirectory => Path.Combine(AppServices.AppDataDirectory, "databases");
+    public static string DefaultDirectory => AppServices.DatabaseDirectory;
 
     public static string Sanitize(string name)
     {

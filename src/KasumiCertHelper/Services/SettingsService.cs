@@ -14,6 +14,18 @@ public sealed class SettingsService
     public string? LastDirectory { get; set; }
 
     /// <summary>
+    /// Directory the "new database" dialog starts in, and where new databases are suggested. <c>null</c>
+    /// means the default under the application data directory.
+    /// </summary>
+    public string? DatabaseDirectory { get; set; }
+
+    /// <summary>
+    /// Directory holding the OpenPGP key files. <c>null</c> means the default under the application
+    /// data directory. It can also point at a directory of exported GnuPG keys.
+    /// </summary>
+    public string? PgpKeyDirectory { get; set; }
+
+    /// <summary>
     /// Language code such as <c>en</c> or <c>zh-CN</c>. <c>null</c> or empty means "follow the
     /// Windows display language", which is the default.
     /// </summary>
