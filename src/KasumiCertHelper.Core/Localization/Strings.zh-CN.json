@@ -407,6 +407,7 @@
   "Settings_StoreSection": "证书存储",
   "Settings_TestConnection": "测试连接",
   "Settings_Title": "设置",
+  "Settings_Version": "版本 {0}",
   "Store_Location_CurrentUser": "当前用户",
   "Store_Location_LocalMachine": "本地计算机",
   "Store_Name_AddressBook": "其他人",

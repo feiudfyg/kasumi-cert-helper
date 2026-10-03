@@ -1,3 +1,5 @@
+using System.Reflection;
+
 namespace KasumiCertHelper.Services;
 
 /// <summary>
@@ -13,6 +15,8 @@ public static class ProductInfo
 
     public const string RepositoryUrl = "https://github.com/feiudfyg/kasumi-cert-helper";
 
+    public const string ReleasesUrl = RepositoryUrl + "/releases";
+
     public const string LicenseName = "GNU General Public License v3.0";
 
     /// <summary>File name of the third party notices, shipped next to the executable.</summary>
@@ -23,4 +27,26 @@ public static class ProductInfo
 
     /// <summary>Used when the notices file is not next to the executable (development builds).</summary>
     public static string NoticesUrl => RepositoryUrl + "/blob/main/" + NoticesFileName;
+
+    /// <summary>
+    /// The version from the project file, so the release tag and the about page cannot drift apart.
+    /// The source revision suffix the SDK appends is dropped.
+    /// </summary>
+    public static string Version
+    {
+        get
+        {
+            Assembly assembly = typeof(ProductInfo).Assembly;
+            string? informational = assembly
+                .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+
+            if (!string.IsNullOrWhiteSpace(informational))
+            {
+                int revision = informational.IndexOf('+');
+                return revision > 0 ? informational[..revision] : informational;
+            }
+
+            return assembly.GetName().Version?.ToString(3) ?? "0.0.0";
+        }
+    }
 }

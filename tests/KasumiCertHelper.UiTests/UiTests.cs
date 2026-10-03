@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Text.RegularExpressions;
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Definitions;
 using FlaUI.Core.Tools;
@@ -513,6 +514,7 @@ public class SettingsPageTests
         string about = UiHelpers.TextOf(_app, "AboutText");
         Assert.Contains("feiudfyg", about, StringComparison.Ordinal);
         Assert.Contains("GPLv3", about, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(ReadVersionFromProjectFile(), about, StringComparison.Ordinal);
 
         string components = UiHelpers.TextOf(_app, "ComponentsText");
         Assert.Contains("BouncyCastle.Cryptography", components, StringComparison.Ordinal);
@@ -524,6 +526,23 @@ public class SettingsPageTests
             "https://github.com/feiudfyg/kasumi-cert-helper",
             UiHelpers.TextOf(_app, "SourceLinkButton"));
         Assert.NotNull(_app.RequireById("OpenNoticesButton"));
+    }
+
+    /// <summary>The version the release tag has to match, read from the application project file.</summary>
+    private static string ReadVersionFromProjectFile()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "KasumiCertHelper.slnx")))
+        {
+            directory = directory.Parent;
+        }
+
+        Assert.NotNull(directory);
+        string project = Path.Combine(directory!.FullName, "src", "KasumiCertHelper", "KasumiCertHelper.csproj");
+        Match match = Regex.Match(File.ReadAllText(project), "<Version>([^<]+)</Version>");
+
+        Assert.True(match.Success, "KasumiCertHelper.csproj 中没有声明 <Version>。");
+        return match.Groups[1].Value;
     }
 
     /// <summary>

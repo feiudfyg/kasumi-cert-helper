@@ -1,0 +1,55 @@
+name: Release
+
+# Pushing a v* tag builds the self-contained application zip and attaches it to the release.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      # The SDK is pinned in global.json, so the runner has to install at least that version.
+      - name: Install the .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Unit tests
+        run: dotnet test tests\KasumiCertHelper.Core.Tests\KasumiCertHelper.Core.Tests.csproj -c Release
+
+      - name: Publish
+        run: >
+          dotnet publish src\KasumiCertHelper\KasumiCertHelper.csproj
+          -c Release -r win-x64 --self-contained true
+          -o artifacts\win-x64-standalone
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}"
+          $zip = "artifacts/KasumiCertHelper-$version-win-x64.zip"
+          Compress-Archive -Path artifacts/win-x64-standalone/* -DestinationPath $zip
+          Get-Item $zip | Select-Object Name, Length
+
+      - name: Attach to the release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = "${{ github.ref_name }}"
+          $zip = "artifacts/KasumiCertHelper-$version-win-x64.zip"
+          gh release view $version 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $version --title $version --generate-notes
+          }
+          gh release upload $version $zip --clobber

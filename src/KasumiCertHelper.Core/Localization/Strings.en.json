@@ -407,6 +407,7 @@
   "Settings_StoreSection": "Certificate stores",
   "Settings_TestConnection": "Test connection",
   "Settings_Title": "Settings",
+  "Settings_Version": "Version {0}",
   "Store_Location_CurrentUser": "Current user",
   "Store_Location_LocalMachine": "Local machine",
   "Store_Name_AddressBook": "Other People",

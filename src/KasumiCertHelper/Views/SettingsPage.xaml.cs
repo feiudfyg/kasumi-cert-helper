@@ -92,6 +92,7 @@ public sealed partial class SettingsPage : Page
 
         AboutText.Text = string.Join('\n',
             Loc.Get("Settings_AboutText"),
+            Loc.Format("Settings_Version", ProductInfo.Version),
             Loc.Get("Settings_Copyright"),
             Loc.Get("Settings_LicenseLine"),
             Loc.Get("Settings_LogFilePrefix") + AppServices.LogPath);

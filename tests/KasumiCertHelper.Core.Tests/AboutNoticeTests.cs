@@ -54,6 +54,17 @@ public class AboutNoticeTests
         Assert.DoesNotContain("GPL", label, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>The release tag carries the version, so the project file has to declare one.</summary>
+    [Fact]
+    public void TheProjectDeclaresTheApplicationVersion()
+    {
+        string project = Path.Combine(Root, "src", "KasumiCertHelper", "KasumiCertHelper.csproj");
+        Match match = Regex.Match(File.ReadAllText(project), "<Version>([^<]+)</Version>");
+
+        Assert.True(match.Success, "KasumiCertHelper.csproj does not declare a <Version>.");
+        Assert.Matches(@"^\d+\.\d+\.\d+$", match.Groups[1].Value);
+    }
+
     [Fact]
     public void LicenseAndNoticesShipWithTheRepository()
     {
