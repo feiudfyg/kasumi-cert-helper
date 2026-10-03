@@ -10,11 +10,12 @@ X.509 workbench, and handle OpenPGP keys in process — no `gpg.exe`, no command
 | **Certificate stores** | Browse, import, export and delete certificates in the current user and local machine stores, with per-store counts and parsed details |
 | **X.509 certificates** | Own `.kdb` database: keys, self-signed certificates, CAs, CSRs and signing, with SAN / EKU / CRL / SKI / … extensions |
 | **OpenPGP** | Generate v4 / v6 (RFC 9580, Ed25519/X25519, Ed448/X448) keys, read GnuPG's v5 keys, import and export, encrypt, decrypt, sign and verify — BouncyCastle in process, no GnuPG installation |
-| **Settings** | Interface language, elevation, data locations, licence and source code |
+| **Settings** | Interface language, elevation, configurable data folders, licence and source code |
 
 - Interface in **English and 简体中文**, follows the Windows display language.
 - X.509 private keys are encrypted with the database password (PKCS#8 PBES2, AES-256-CBC).
 - OpenPGP keys are ASCII armored files, so GnuPG can read and import them directly.
+- Imports an existing GnuPG keyring; the X.509 database and OpenPGP key folders can be moved in Settings.
 - Resizable columns and panes, remembered per user; parsed output instead of raw dumps.
 
 Not implemented, by design: smart cards, `gpg-agent`/pinentry integration and keyserver (HKP) access.
@@ -85,10 +86,11 @@ OpenPGP 密钥 —— 不需要 `gpg.exe`，也不需要命令行。
 - **证书存储**：查看、导入、导出、删除当前用户与本机证书存储中的证书，每个存储显示数量，详情经过解析。
 - **X.509 证书**：自有 `.kdb` 数据库，支持密钥、自签名证书、CA、CSR 与签发，可设置 SAN / EKU / CRL / SKI 等扩展。
 - **OpenPGP**：可生成 v4 / v6（RFC 9580，Ed25519/X25519、Ed448/X448）密钥，读取 GnuPG 的 v5 密钥，并支持导入导出、加密、解密、签名、验签，全部在进程内完成。
-- **设置**：界面语言、提权、数据位置、许可证与源代码。
+- **设置**：界面语言、提权、可自定义的数据目录、许可证与源代码。
 
 界面提供**英文与简体中文**，默认跟随 Windows 显示语言。X.509 私钥使用数据库口令加密（PKCS#8
-PBES2、AES-256-CBC）；OpenPGP 密钥为 ASCII armor 文件，GnuPG 可直接导入。
+PBES2、AES-256-CBC）；OpenPGP 密钥为 ASCII armor 文件，GnuPG 可直接导入；可从现有的 GnuPG 密钥库
+导入，X.509 数据库与 OpenPGP 密钥目录可在设置中更改。
 
 未实现（有意取舍）：智能卡、`gpg-agent`/pinentry 集成、密钥服务器（HKP）。
 
