@@ -1,11 +1,11 @@
 name: Release
 
-# Pushing a v* tag builds the self-contained application zip and attaches it to the release.
+# Pushing a v* tag builds the self-contained application zip and attaches it to the release of that
+# tag. Run an existing tag's workflow again from the actions page to rebuild its asset.
 on:
   push:
     tags:
       - 'v*'
-  workflow_dispatch:
 
 permissions:
   contents: write
@@ -38,7 +38,7 @@ jobs:
         run: |
           $version = "${{ github.ref_name }}"
           $zip = "artifacts/KasumiCertHelper-$version-win-x64.zip"
-          Compress-Archive -Path artifacts/win-x64-standalone/* -DestinationPath $zip
+          Compress-Archive -Path artifacts/win-x64-standalone/* -DestinationPath $zip -Force
           Get-Item $zip | Select-Object Name, Length
 
       - name: Attach to the release
