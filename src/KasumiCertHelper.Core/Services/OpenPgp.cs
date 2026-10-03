@@ -616,7 +616,9 @@ public static class OpenPgp
             KeySize(key),
             ToLocal(key.CreationTime),
             ExpiryOf(key),
-            key.HasRevocation(),
+            // BC 2.7.0 renamed this probe to HasRevocation(); the crypto-refresh fork
+            // (upstream PR #525, which we build against) still exposes IsRevoked().
+            key.IsRevoked(),
             canEncrypt,
             canSign,
             Armor(ring));

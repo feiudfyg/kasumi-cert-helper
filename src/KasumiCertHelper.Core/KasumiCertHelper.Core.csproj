@@ -22,7 +22,12 @@
 
 
   <ItemGroup>
-    <PackageReference Include="BouncyCastle.Cryptography" Version="2.7.0" />
+    <!--
+      Fork of BouncyCastle.Cryptography with GnuPG v5 (crypto-refresh draft)
+      support, vendored under third_party/nuget (see nuget.config).
+    -->
+    <PackageReference Include="BouncyCastle.Cryptography" Version="2.7.0-kasumi.1" />
   </ItemGroup>
+
 
 </Project>

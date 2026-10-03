@@ -6,7 +6,7 @@ unmodified as binary dependencies:
 
 | Component | Version | License |
 | --- | --- | --- |
-| [BouncyCastle.Cryptography](https://www.bouncycastle.org/csharp/) | 2.7.0 | MIT (Bouncy Castle Licence) |
+| [BouncyCastle.Cryptography](https://www.bouncycastle.org/csharp/) | 2.7.0-kasumi.1 | MIT (Bouncy Castle Licence) |
 | [CommunityToolkit.Mvvm](https://github.com/CommunityToolkit/dotnet) | 8.4.2 | MIT |
 | [Microsoft Windows App SDK](https://github.com/microsoft/WindowsAppSDK) | 1.8.260921001 | Microsoft Software License Terms (MIT based) |
 | [Microsoft.Windows.SDK.BuildTools](https://www.nuget.org/packages/Microsoft.Windows.SDK.BuildTools) | 10.0.26100.4654 | Build time only, Microsoft Software License Terms |
@@ -35,6 +35,14 @@ SOFTWARE.
 
 BouncyCastle copyright: Copyright (c) 2000-2026 The Legion of the Bouncy Castle
 Inc.
+
+The BouncyCastle.Cryptography package is a patched fork. It adds support for
+the GnuPG draft-v5 (crypto-refresh) OpenPGP format and is based on upstream
+pull request #525 of bc-csharp. The fork remains under the Bouncy Castle
+Licence (MIT); its source is available at
+<https://github.com/feiudfyg/bc-csharp> (branch `kasumi-v5v6`) and the package
+is vendored under `third_party/nuget` so the build does not depend on fetching
+it.
 
 No GnuPG binaries are bundled with this application or produced next to the
 executable.

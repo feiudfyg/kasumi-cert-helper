@@ -480,3 +480,6 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# The patched BouncyCastle package is vendored on purpose (see nuget.config).
+!third_party/nuget/*.nupkg

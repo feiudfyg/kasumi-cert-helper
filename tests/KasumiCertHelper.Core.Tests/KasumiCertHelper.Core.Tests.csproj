@@ -26,4 +26,13 @@
     <ProjectReference Include="..\..\src\KasumiCertHelper.Core\KasumiCertHelper.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!--
+      OpenPGP conformance fixtures. The v5 (GnuPG crypto-refresh draft) ones were produced with
+      gpg 2.5.24: an Ed448 primary key with an X448 encryption subkey, protected by the test passphrase
+      "kasumi-test". They are throwaway keys that only ever encrypt/sign the payload next to them.
+    -->
+    <None Include="Fixtures\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
