@@ -24,6 +24,12 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      # The about/licence test checks that LICENSE and THIRD-PARTY-NOTICES.md were copied next to the
+      # application executable, so the application itself has to be built before the unit tests run
+      # (the Core test project does not reference it).
+      - name: Build the application
+        run: dotnet build src\KasumiCertHelper\KasumiCertHelper.csproj -c Release
+
       - name: Unit tests
         run: dotnet test tests\KasumiCertHelper.Core.Tests\KasumiCertHelper.Core.Tests.csproj -c Release
 

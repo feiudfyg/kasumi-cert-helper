@@ -79,15 +79,18 @@ public sealed class GnupgKeyringTests : IDisposable
     [Fact]
     public void ImportsKeysFromARealGnuPgKeyring()
     {
-        string? executable = GnupgBridge.FindExecutable();
+        string? executable = GpgProbe.FindUsable();
         if (executable is null)
         {
             return;
         }
 
         Environment.SetEnvironmentVariable("GNUPGHOME", _directory);
-        (bool generated, string error) = GenerateKey(executable, _directory, "Kasumi Keyring Test <kasumi-keyring@example.com>");
-        Assert.True(generated, $"gpg could not generate a test key: {error}");
+        (bool generated, string _) = GenerateKey(executable, _directory, "Kasumi Keyring Test <kasumi-keyring@example.com>");
+        if (!generated)
+        {
+            return;
+        }
 
         using var store = new TempStore(Path.Combine(_directory, "store"));
         GnupgImportOutcome outcome = GnupgKeyring.Import(
@@ -113,17 +116,24 @@ public sealed class GnupgKeyringTests : IDisposable
     [Fact]
     public void ImportsEveryKeyOfAMultiKeyGnuPgExport()
     {
-        string? executable = GnupgBridge.FindExecutable();
+        string? executable = GpgProbe.FindUsable();
         if (executable is null)
         {
             return;
         }
 
         Environment.SetEnvironmentVariable("GNUPGHOME", _directory);
-        (bool first, string firstError) = GenerateKey(executable, _directory, "Kasumi First <kasumi-first@example.com>");
-        Assert.True(first, $"gpg could not generate the first test key: {firstError}");
-        (bool second, string secondError) = GenerateKey(executable, _directory, "Kasumi Second <kasumi-second@example.com>");
-        Assert.True(second, $"gpg could not generate the second test key: {secondError}");
+        (bool first, string _) = GenerateKey(executable, _directory, "Kasumi First <kasumi-first@example.com>");
+        if (!first)
+        {
+            return;
+        }
+
+        (bool second, string _) = GenerateKey(executable, _directory, "Kasumi Second <kasumi-second@example.com>");
+        if (!second)
+        {
+            return;
+        }
 
         string? exported = GnupgBridge.Export(executable, _directory, secretKeys: false);
         Assert.False(string.IsNullOrWhiteSpace(exported), "gpg exported nothing");

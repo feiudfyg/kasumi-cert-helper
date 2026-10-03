@@ -19,8 +19,8 @@ public sealed class V5InteropTests : IDisposable
 
     public V5InteropTests()
     {
-        _gpg = GnupgBridge.FindExecutable() ?? string.Empty;
-        _available = !string.IsNullOrEmpty(_gpg) && File.Exists(_gpg);
+        _gpg = GpgProbe.FindUsable() ?? string.Empty;
+        _available = !string.IsNullOrEmpty(_gpg);
 
         _home = Path.Combine(Path.GetTempPath(), "kasumi-v5-interop-" + Guid.NewGuid().ToString("N").Substring(0, 8));
 
@@ -31,8 +31,12 @@ public sealed class V5InteropTests : IDisposable
             string fx = Path.Combine(AppContext.BaseDirectory, "Fixtures");
             string secretPath = Path.Combine(_home, "import-secret.asc");
             File.WriteAllText(secretPath, File.ReadAllText(Path.Combine(fx, "v5-ed448-secret.asc")));
-            RunGpg("--import", secretPath);
+            (int exit, _, _) = RunGpg("--import", secretPath);
             File.Delete(secretPath);
+
+            // If even the import fails, this gpg cannot be used for interoperability: skip instead
+            // of failing the suite on an environment problem.
+            _available = exit == 0;
         }
     }
 

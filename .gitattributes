@@ -1,0 +1,8 @@
+# Cryptographic test fixtures must stay byte-for-byte identical across checkouts. The v5 OpenPGP
+# tests verify signatures and decrypt payloads over the exact bytes, so git must never rewrite their
+# line endings (a fresh checkout with core.autocrlf=true otherwise turns LF into CRLF).
+tests/KasumiCertHelper.Core.Tests/Fixtures/** -text
+
+# Keep the license and notice files as authored.
+LICENSE text
+THIRD-PARTY-NOTICES.md text
